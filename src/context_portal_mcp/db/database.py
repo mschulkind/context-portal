@@ -76,7 +76,7 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
     current_file_dir = Path(__file__).resolve().parent
     log.debug(f"ensure_alembic_files_exist: current_file_dir = {current_file_dir}")
     # Navigate up to the context_portal_mcp package root
-    conport_package_root = current_file_dir.parent.parent # src/context_portal_mcp
+    conport_package_root = current_file_dir.parent # This should be .../context_portal_mcp
     log.debug(f"ensure_alembic_files_exist: conport_package_root = {conport_package_root}")
     # The templates directory is directly under the context_portal_mcp package root
     template_base_dir = conport_package_root / "templates"

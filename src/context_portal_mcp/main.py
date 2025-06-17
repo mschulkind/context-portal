@@ -368,6 +368,7 @@ async def tool_log_system_pattern(
 async def tool_get_system_patterns(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     ctx: Context,
+    limit: Annotated[Optional[int], Field(gt=0, description="Maximum number of patterns to return")] = None,
     tags_filter_include_all: Annotated[Optional[List[str]], Field(description="Filter: items must include ALL of these tags.")] = None,
     tags_filter_include_any: Annotated[Optional[List[str]], Field(description="Filter: items must include AT LEAST ONE of these tags.")] = None
 ) -> List[Dict[str, Any]]:
@@ -375,6 +376,7 @@ async def tool_get_system_patterns(
         # The model's own validator will check tag filter exclusivity.
         pydantic_args = models.GetSystemPatternsArgs(
             workspace_id=workspace_id,
+            limit=limit,
             tags_filter_include_all=tags_filter_include_all,
             tags_filter_include_any=tags_filter_include_any
         )

@@ -191,6 +191,7 @@ class LogSystemPatternArgs(BaseArgs):
 
 class GetSystemPatternsArgs(BaseArgs):
     """Arguments for retrieving system patterns."""
+    limit: Optional[int] = Field(None, gt=0, description="Maximum number of patterns to return (most recent first)")
     tags_filter_include_all: Optional[List[str]] = Field(None, description="Filter: items must include ALL of these tags.")
     tags_filter_include_any: Optional[List[str]] = Field(None, description="Filter: items must include AT LEAST ONE of these tags.")
 

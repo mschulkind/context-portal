@@ -72,14 +72,13 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
     alembic_dir_path = conport_db_dir / "alembic"
 
     # Determine the path to the installed templates within the ConPort package
-    # Get the absolute path to the directory containing this script (database.py)
+    # Determine the path to the templates directory relative to this source file.
+    # This script is at src/context_portal_mcp/db/database.py
+    # Templates are at src/context_portal_mcp/templates/
     current_file_dir = Path(__file__).resolve().parent
     log.debug(f"ensure_alembic_files_exist: current_file_dir = {current_file_dir}")
-    # Navigate up to the context_portal_mcp package root
-    conport_package_root = current_file_dir.parent # This should be .../context_portal_mcp
-    log.debug(f"ensure_alembic_files_exist: conport_package_root = {conport_package_root}")
-    # The templates directory is directly under the context_portal_mcp package root
-    template_base_dir = conport_package_root / "templates"
+    # Navigate up from 'db' to 'context_portal_mcp' then to 'templates'
+    template_base_dir = current_file_dir.parent / "templates"
     log.debug(f"ensure_alembic_files_exist: template_base_dir = {template_base_dir}")
 
     # Check for alembic.ini

@@ -15,7 +15,12 @@ from ..core.config import get_database_path
 from ..core.exceptions import DatabaseError, ConfigurationError
 from . import models # Import models from the same directory
 import shutil # For copying directories
-import inspect # For getting the current file's path to find templates
+import inspect
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    # Try backported to PY<37 `importlib_resources`.
+    import importlib_resources as pkg_resources
 
 log = logging.getLogger(__name__) # Get a logger for this module
 
@@ -71,51 +76,52 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
     alembic_ini_path = conport_db_dir / "alembic.ini"
     alembic_dir_path = conport_db_dir / "alembic"
 
-    # Determine the path to the installed templates within the ConPort package
-    # Determine the path to the templates directory relative to this source file.
-    # This script is at src/context_portal_mcp/db/database.py
-    # Templates are at src/context_portal_mcp/templates/
-    current_file_dir = Path(__file__).resolve().parent
-    log.debug(f"ensure_alembic_files_exist: current_file_dir = {current_file_dir}")
-    # Navigate up from 'db' to 'context_portal_mcp' then to 'templates'
-    template_base_dir = current_file_dir.parent / "templates"
-    log.debug(f"ensure_alembic_files_exist: template_base_dir = {template_base_dir}")
-
+    # Use importlib.resources to reliably find the templates within the package
+    # The '..' is to navigate from .db to the parent package 'context_portal_mcp'
+    package_name = '..templates'
+    
     # Check for alembic.ini
     log.debug(f"Checking for alembic.ini at: {alembic_ini_path}")
-    log.debug(f"alembic.ini exists? {alembic_ini_path.exists()}")
     if not alembic_ini_path.exists():
         log.debug(f"alembic.ini not found at {alembic_ini_path}. Attempting to provision.")
-        template_ini_path = template_base_dir / "alembic.ini" # Look directly in templates
-        if template_ini_path.exists():
-            try:
-                log.info(f"Copying missing alembic.ini from templates to {alembic_ini_path}")
-                shutil.copy2(template_ini_path, alembic_ini_path)
-                log.debug(f"alembic.ini copied. Exists: {alembic_ini_path.exists()}")
-            except shutil.Error as e:
-                log.error(f"Failed to copy alembic.ini: {e}")
-                raise DatabaseError(f"Failed to provision alembic.ini: {e}. Checked path: {alembic_ini_path}, Exists: {alembic_ini_path.exists()}")
-        else:
-            raise DatabaseError(f"Template alembic.ini not found at {template_ini_path}. Cannot auto-provision.")
-            log.warning(f"Template alembic.ini not found at {template_ini_path}. Cannot auto-provision.")
+        try:
+            with pkg_resources.path(package_name, 'alembic.ini') as template_ini_path:
+                if template_ini_path.exists():
+                    log.info(f"Copying missing alembic.ini from templates to {alembic_ini_path}")
+                    shutil.copy2(template_ini_path, alembic_ini_path)
+                    log.debug(f"alembic.ini copied. Exists: {alembic_ini_path.exists()}")
+                else:
+                    # This else block might be redundant if pkg_resources.path raises an error
+                    raise FileNotFoundError()
+        except (FileNotFoundError, ModuleNotFoundError) as e:
+            log.error(f"Could not find the alembic.ini template within the package: {e}")
+            raise DatabaseError(f"Template alembic.ini not found within the package. Cannot auto-provision.")
+        except Exception as e:
+            log.error(f"An unexpected error occurred while provisioning alembic.ini: {e}")
+            raise DatabaseError(f"Failed to provision alembic.ini: {e}")
 
     # Check for alembic/ directory
     log.debug(f"Checking for alembic/ directory at: {alembic_dir_path}")
-    log.debug(f"alembic/ directory exists? {alembic_dir_path.exists()}")
     if not alembic_dir_path.exists():
         log.debug(f"alembic/ directory not found at {alembic_dir_path}. Attempting to provision.")
-        template_scripts_dir = template_base_dir / "alembic" # Look directly in templates
-        if template_scripts_dir.is_dir():
-            try:
+        try:
+            # importlib.resources.files returns a traversable object
+            template_scripts_traversable = pkg_resources.files(package_name).joinpath('alembic')
+            
+            if template_scripts_traversable.is_dir():
                 log.info(f"Copying missing alembic/ scripts from templates to {alembic_dir_path}")
-                shutil.copytree(template_scripts_dir, alembic_dir_path, dirs_exist_ok=True)
+                # shutil.copytree can work with the string representation of the path
+                with pkg_resources.as_file(template_scripts_traversable) as template_scripts_path:
+                    shutil.copytree(template_scripts_path, alembic_dir_path, dirs_exist_ok=True)
                 log.debug(f"alembic/ directory copied. Exists: {alembic_dir_path.exists()}")
-            except shutil.Error as e:
-                log.error(f"Failed to copy alembic/ directory: {e}")
-                raise DatabaseError(f"Failed to provision alembic/ directory: {e}. Checked path: {alembic_dir_path}, Exists: {alembic_dir_path.exists()}")
-        else:
-            raise DatabaseError(f"Template alembic/ directory not found at {template_scripts_dir}. Cannot auto-provision.")
-            log.warning(f"Template alembic/ directory not found at {template_scripts_dir}. Cannot auto-provision.")
+            else:
+                 raise FileNotFoundError()
+        except (FileNotFoundError, ModuleNotFoundError) as e:
+            log.error(f"Could not find the alembic/ template directory within the package: {e}")
+            raise DatabaseError(f"Template alembic/ directory not found within the package. Cannot auto-provision.")
+        except Exception as e:
+            log.error(f"An unexpected error occurred while provisioning alembic/ directory: {e}")
+            raise DatabaseError(f"Failed to provision alembic/ directory: {e}")
 
 def run_migrations(db_path: Path, workspace_root_dir: Path):
     """

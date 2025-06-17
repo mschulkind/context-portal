@@ -76,15 +76,16 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
     log.debug(f"ensure_alembic_files_exist: current_file_dir = {current_file_dir}")
     conport_package_root = current_file_dir.parent # This should be .../context_portal_mcp
     log.debug(f"ensure_alembic_files_exist: conport_package_root = {conport_package_root}")
-    template_alembic_dir = conport_package_root / "templates" / "alembic"
-    log.debug(f"ensure_alembic_files_exist: template_alembic_dir = {template_alembic_dir}")
+    # The templates directory is directly under conport_package_root
+    template_base_dir = conport_package_root / "templates"
+    log.debug(f"ensure_alembic_files_exist: template_base_dir = {template_base_dir}")
 
     # Check for alembic.ini
     log.debug(f"Checking for alembic.ini at: {alembic_ini_path}")
     log.debug(f"alembic.ini exists? {alembic_ini_path.exists()}")
     if not alembic_ini_path.exists():
         log.debug(f"alembic.ini not found at {alembic_ini_path}. Attempting to provision.")
-        template_ini_path = template_alembic_dir / "alembic.ini"
+        template_ini_path = template_base_dir / "alembic.ini" # Look directly in templates
         if template_ini_path.exists():
             try:
                 log.info(f"Copying missing alembic.ini from templates to {alembic_ini_path}")
@@ -95,7 +96,6 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
                 raise DatabaseError(f"Failed to provision alembic.ini: {e}. Checked path: {alembic_ini_path}, Exists: {alembic_ini_path.exists()}")
         else:
             raise DatabaseError(f"Template alembic.ini not found at {template_ini_path}. Cannot auto-provision.")
-            # The log.warning here is redundant with the raise, but keeping for now as it was in original
             log.warning(f"Template alembic.ini not found at {template_ini_path}. Cannot auto-provision.")
 
     # Check for alembic/ directory
@@ -103,7 +103,7 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
     log.debug(f"alembic/ directory exists? {alembic_dir_path.exists()}")
     if not alembic_dir_path.exists():
         log.debug(f"alembic/ directory not found at {alembic_dir_path}. Attempting to provision.")
-        template_scripts_dir = template_alembic_dir / "alembic"
+        template_scripts_dir = template_base_dir / "alembic" # Look directly in templates
         if template_scripts_dir.is_dir():
             try:
                 log.info(f"Copying missing alembic/ scripts from templates to {alembic_dir_path}")
@@ -114,7 +114,6 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
                 raise DatabaseError(f"Failed to provision alembic/ directory: {e}. Checked path: {alembic_dir_path}, Exists: {alembic_dir_path.exists()}")
         else:
             raise DatabaseError(f"Template alembic/ directory not found at {template_scripts_dir}. Cannot auto-provision.")
-            # The log.warning here is redundant with the raise, but keeping for now as it was in original
             log.warning(f"Template alembic/ directory not found at {template_scripts_dir}. Cannot auto-provision.")
 
 def run_migrations(db_path: Path, workspace_root_dir: Path):

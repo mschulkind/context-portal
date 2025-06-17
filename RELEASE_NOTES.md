@@ -2,6 +2,21 @@
 
 <br>
 
+## Version 0.2.14 - Database Stability and Bug Fixes
+
+This release addresses a series of critical bugs related to database initialization and Alembic migrations, significantly improving the stability and reliability of the ConPort server.
+
+**Key Fixes:**
+
+- **Database Initialization:** Resolved a critical failure where new workspaces would fail to initialize the database due to a `no such column: timestamp` error. The root cause was a complex series of issues with Alembic migrations, which have now been fully repaired.
+- **Alembic Migration History:** Repaired a corrupted Alembic migration history that was causing "Multiple head revisions are present" errors and preventing all database operations. The migration history is now clean and linear.
+- **`get_system_patterns` Tool:** Fixed a bug where using the `limit` parameter would cause a Pydantic validation error. The tool now correctly handles the `limit` parameter.
+
+**Impact:**
+
+This is a critical stability release. All users should upgrade to ensure reliable database operation and to benefit from the bug fixes.
+
+<br>
 ## Version 0.2.11 - Cursor Initialization Hotfix
 
 This release addresses a critical bug that caused `NameError: name 'cursor' is not defined` during database operations.

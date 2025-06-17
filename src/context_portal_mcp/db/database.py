@@ -60,15 +60,18 @@ def close_all_connections():
 
 def ensure_alembic_files_exist(workspace_root_dir: Path):
     """
-    Ensures that alembic.ini and the alembic/ directory exist in the workspace root.
-    If not, copies them from the server's internal templates.
+    Ensures that alembic.ini and the alembic/ directory exist within the
+    workspace's context_portal directory. If not, copies them from the
+    server's internal templates.
     """
-    alembic_ini_path = workspace_root_dir / Path("alembic.ini")
-    alembic_dir_path = workspace_root_dir / Path("alembic")
+    # The actual directory where context.db resides and where Alembic files should be
+    conport_db_dir = workspace_root_dir / "context_portal"
+    conport_db_dir.mkdir(exist_ok=True) # Ensure this directory exists
+
+    alembic_ini_path = conport_db_dir / "alembic.ini"
+    alembic_dir_path = conport_db_dir / "alembic"
 
     # Determine the path to the installed templates within the ConPort package
-    # This script is at src/context_portal_mcp/db/database.py
-    # Templates are at src/context_portal_mcp/templates/alembic/
     current_file_dir = Path(inspect.getfile(ensure_alembic_files_exist)).parent
     log.debug(f"ensure_alembic_files_exist: current_file_dir = {current_file_dir}")
     conport_package_root = current_file_dir.parent # This should be .../context_portal_mcp
@@ -91,7 +94,8 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
                 log.error(f"Failed to copy alembic.ini: {e}")
                 raise DatabaseError(f"Failed to provision alembic.ini: {e}. Checked path: {alembic_ini_path}, Exists: {alembic_ini_path.exists()}")
         else:
-            raise DatabaseError(f"Template alembic.ini not found at {template_ini_path}. Cannot auto-provision. Checked path: {alembic_ini_path}, Exists: {alembic_ini_path.exists()}")
+            raise DatabaseError(f"Template alembic.ini not found at {template_ini_path}. Cannot auto-provision.")
+            # The log.warning here is redundant with the raise, but keeping for now as it was in original
             log.warning(f"Template alembic.ini not found at {template_ini_path}. Cannot auto-provision.")
 
     # Check for alembic/ directory
@@ -109,18 +113,21 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
                 log.error(f"Failed to copy alembic/ directory: {e}")
                 raise DatabaseError(f"Failed to provision alembic/ directory: {e}. Checked path: {alembic_dir_path}, Exists: {alembic_dir_path.exists()}")
         else:
-            raise DatabaseError(f"Template alembic/ directory not found at {template_scripts_dir}. Cannot auto-provision. Checked path: {alembic_dir_path}, Exists: {alembic_dir_path.exists()}")
+            raise DatabaseError(f"Template alembic/ directory not found at {template_scripts_dir}. Cannot auto-provision.")
+            # The log.warning here is redundant with the raise, but keeping for now as it was in original
             log.warning(f"Template alembic/ directory not found at {template_scripts_dir}. Cannot auto-provision.")
 
-def run_migrations(db_path: Path, project_root_dir: Path):
+def run_migrations(db_path: Path, workspace_root_dir: Path):
     """
     Runs Alembic migrations to upgrade the database to the latest version.
     This function is called on database connection to ensure schema is up-to-date.
     """
-    # Construct the absolute path to alembic.ini and the scripts directory
-    # using the provided project_root_dir
-    alembic_ini_path = project_root_dir / Path("alembic.ini")
-    alembic_scripts_path = project_root_dir / Path("alembic")
+    # The directory where alembic.ini and alembic/ scripts are expected to be,
+    # which is now the same directory as the database file.
+    alembic_config_and_scripts_dir = workspace_root_dir / "context_portal"
+
+    alembic_ini_path = alembic_config_and_scripts_dir / "alembic.ini"
+    alembic_scripts_path = alembic_config_and_scripts_dir / "alembic"
 
     # Initialize Alembic Config with the path to alembic.ini
     log.debug(f"Alembic: Current working directory (os.getcwd()): {os.getcwd()}")

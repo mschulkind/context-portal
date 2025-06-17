@@ -2,6 +2,19 @@
 
 <br>
 
+## Version 0.2.16 - IDE Compatibility Fix
+
+This hotfix release addresses a critical startup failure when using the ConPort server with the latest versions of client IDEs (e.g., Roo Code v3.20.0 and later).
+
+**Key Fix:**
+
+- **Logging System Refactor:** The server's logging system has been refactored to prevent premature interaction with `stdio` streams. All logging is now configured *after* command-line arguments are parsed, resolving the `OSError: [Errno 22] Invalid argument` and `ValueError: I/O operation on closed file` errors that occurred during startup in `stdio` mode.
+
+**Impact:**
+
+This is a critical update for all users to ensure compatibility with the latest development tools. The server should now start and run reliably when launched from any IDE.
+
+<br>
 ## Version 0.2.14 - Database Stability and Bug Fixes
 
 This release addresses a series of critical bugs related to database initialization and Alembic migrations, significantly improving the stability and reliability of the ConPort server.

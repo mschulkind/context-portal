@@ -31,17 +31,44 @@ except ImportError:
     from src.context_portal_mcp.db.database import ensure_alembic_files_exist
     from src.context_portal_mcp.core import exceptions
 
-# Configure logging
-log_format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO) # Default level for all handlers
+log = logging.getLogger(__name__)
 
-# Console handler
-console_handler = logging.StreamHandler(sys.stderr)
-console_handler.setFormatter(logging.Formatter(log_format))
-root_logger.addHandler(console_handler)
+def setup_logging(args: argparse.Namespace):
+    """Configures logging based on command-line arguments."""
+    log_format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+    root_logger = logging.getLogger()
+    # Clear any existing handlers to avoid duplicates
+    if root_logger.hasHandlers():
+        root_logger.handlers.clear()
 
-log = logging.getLogger(__name__) # Get the module-specific logger
+    root_logger.setLevel(getattr(logging, args.log_level.upper()))
+
+    # Add file handler if specified
+    if args.log_file:
+        try:
+            log_dir = os.path.dirname(args.log_file)
+            if log_dir and not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+            
+            file_handler = logging.handlers.RotatingFileHandler(
+                args.log_file,
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5
+            )
+            file_handler.setFormatter(logging.Formatter(log_format))
+            root_logger.addHandler(file_handler)
+            log.info(f"File logging configured to: {args.log_file}")
+        except Exception as e:
+            # Use a temporary basic config to log this error
+            logging.basicConfig()
+            log.error(f"Failed to set up file logging to {args.log_file}: {e}")
+
+    # Only add console handler if not in stdio mode
+    if args.mode != "stdio":
+        console_handler = logging.StreamHandler(sys.stderr)
+        console_handler.setFormatter(logging.Formatter(log_format))
+        root_logger.addHandler(console_handler)
+        log.info("Console logging configured.")
 
 # --- Lifespan Management for FastMCP ---
 @asynccontextmanager
@@ -58,7 +85,7 @@ async def conport_lifespan(server: FastMCP) -> AsyncIterator[None]:
 
 # --- FastMCP Server Instance ---
 # Version from pyproject.toml would be ideal here, or define centrally
-CONPORT_VERSION = "0.2.4" # Updated to match current release
+CONPORT_VERSION = "0.2.16"
 
 conport_mcp = FastMCP(
     name="ConPort", # Pass name directly
@@ -818,30 +845,11 @@ def main_logic(sys_args=None):
     )
 
     args = parser.parse_args(args=sys_args)
+
+    # Configure logging based on the parsed arguments
+    setup_logging(args)
+
     log.info(f"Parsed CLI args: {args}")
-
-    # Set the root logger level based on CLI argument
-    root_logger.setLevel(getattr(logging, args.log_level.upper()))
-
-    # Add file handler if log_file is specified
-    if args.log_file:
-        try:
-            # Ensure the directory exists
-            log_dir = os.path.dirname(args.log_file)
-            if log_dir and not os.path.exists(log_dir):
-                os.makedirs(log_dir, exist_ok=True)
-
-            # Use RotatingFileHandler to prevent log files from growing indefinitely
-            file_handler = logging.handlers.RotatingFileHandler(
-                args.log_file,
-                maxBytes=10 * 1024 * 1024,  # 10 MB
-                backupCount=5              # Keep up to 5 backup files
-            )
-            file_handler.setFormatter(logging.Formatter(log_format))
-            root_logger.addHandler(file_handler)
-            log.info(f"Logging to file: {args.log_file}")
-        except Exception as e:
-            log.error(f"Failed to set up file logging to {args.log_file}: {e}")
 
     # In stdio mode, we should not configure the console handler, as it can interfere with MCP communication.
     # FastMCP handles stdio, so we only add console logging for http mode.
@@ -850,9 +858,6 @@ def main_logic(sys_args=None):
         # The FastAPI `app` (with FastMCP mounted) is run by Uvicorn
         uvicorn.run(app, host=args.host, port=args.port)
     elif args.mode == "stdio":
-        # When running in stdio mode, remove the console handler to avoid conflicts.
-        # The file logger will still be active if specified.
-        root_logger.removeHandler(console_handler)
         log.info(f"Starting ConPort in STDIO mode using FastMCP for initial CLI arg workspace_id: {args.workspace_id}")
 
         effective_workspace_id = args.workspace_id

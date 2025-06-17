@@ -843,11 +843,16 @@ def main_logic(sys_args=None):
         except Exception as e:
             log.error(f"Failed to set up file logging to {args.log_file}: {e}")
 
+    # In stdio mode, we should not configure the console handler, as it can interfere with MCP communication.
+    # FastMCP handles stdio, so we only add console logging for http mode.
     if args.mode == "http":
         log.info(f"Starting ConPort HTTP server (via FastMCP) on {args.host}:{args.port}")
         # The FastAPI `app` (with FastMCP mounted) is run by Uvicorn
         uvicorn.run(app, host=args.host, port=args.port)
     elif args.mode == "stdio":
+        # When running in stdio mode, remove the console handler to avoid conflicts.
+        # The file logger will still be active if specified.
+        root_logger.removeHandler(console_handler)
         log.info(f"Starting ConPort in STDIO mode using FastMCP for initial CLI arg workspace_id: {args.workspace_id}")
 
         effective_workspace_id = args.workspace_id

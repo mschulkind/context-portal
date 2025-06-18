@@ -305,23 +305,6 @@ The ConPort server exposes the following tools via MCP, allowing interaction wit
   - `batch_log_items`: Logs multiple items of the same type (e.g., decisions, progress entries) in a single call.
     - Args: `item_type` (str, req - e.g., "decision", "progress_entry"), `items` (list[dict], req - list of Pydantic model dicts for the item type).
 
-## Prompt Caching Strategy
-
-ConPort can be used to provide structured context (including **vector data** for semantic search) that AI assistants can leverage for **prompt caching** with compatible LLM providers (like Google Gemini, Anthropic Claude, and OpenAI). Prompt caching reduces token costs and latency by reusing frequently used parts of prompts.
-
-This repository includes a detailed strategy file (`conport-custom-instructions/prompt_caching_strategy.yml`) that defines how an LLM assistant should identify cacheable content from ConPort and structure prompts for different providers.
-
-**Key aspects of the strategy include:**
-
-- **Identifying Cacheable Content:** Prioritizing large, stable context like Product Context, detailed System Patterns, or specific Custom Data entries (especially those flagged with a `cache_hint: true` metadata).
-- **Provider-Specific Interaction:**
-  - **Implicit Caching (Gemini, OpenAI):** Structure prompts by placing cacheable ConPort content at the absolute beginning of the prompt. The LLM provider automatically handles caching.
-  - **Explicit Caching (Anthropic):** Insert a `cache_control` breakpoint after the cacheable ConPort content within the prompt payload.
-- **User Hints:** ConPort's Custom Data can include metadata like `cache_hint: true` to explicitly guide the LLM assistant on content prioritization for caching.
-- **LLM Assistant Notification:** The LLM assistant is instructed to notify the user when it structures a prompt for potential caching (e.g., `[INFO: Structuring prompt for caching]`).
-
-By using ConPort to manage your project's knowledge and providing the LLM assistant with this prompt caching strategy, you can enhance the efficiency and cost-effectiveness of your AI interactions.
-
 ## Further Reading
 
 For a more in-depth understanding of ConPort's design, architecture, and advanced usage patterns, please refer to:

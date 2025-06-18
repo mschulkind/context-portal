@@ -46,10 +46,12 @@ def setup_logging(args: argparse.Namespace):
     # Add file handler if specified
     if args.log_file:
         try:
-            # If the log file path is relative, it should be relative to the workspace_id
+            # If the log file path is relative, it should be resolved from the 'context_portal' subdirectory.
             log_file_path = args.log_file
-            if not os.path.isabs(log_file_path) and args.workspace_id:
-                log_file_path = os.path.join(args.workspace_id, log_file_path)
+            if not os.path.isabs(log_file_path):
+                # Default to CWD if workspace_id is not provided, though it's essential for this logic.
+                base_path = args.workspace_id if args.workspace_id else os.getcwd()
+                log_file_path = os.path.join(base_path, "context_portal", log_file_path)
 
             log_dir = os.path.dirname(log_file_path)
             if log_dir and not os.path.exists(log_dir):
@@ -62,11 +64,11 @@ def setup_logging(args: argparse.Namespace):
             )
             file_handler.setFormatter(logging.Formatter(log_format))
             root_logger.addHandler(file_handler)
-            log.info(f"File logging configured to: {args.log_file}")
+            log.info(f"File logging configured to: {log_file_path}")
         except Exception as e:
             # Use a temporary basic config to log this error
             logging.basicConfig()
-            log.error(f"Failed to set up file logging to {args.log_file}: {e}")
+            log.error(f"Failed to set up file logging to {log_file_path}: {e}")
 
     # Only add console handler if not in stdio mode
     if args.mode != "stdio":
@@ -90,7 +92,7 @@ async def conport_lifespan(server: FastMCP) -> AsyncIterator[None]:
 
 # --- FastMCP Server Instance ---
 # Version from pyproject.toml would be ideal here, or define centrally
-CONPORT_VERSION = "0.2.17"
+CONPORT_VERSION = "0.2.18"
 
 conport_mcp = FastMCP(
     name="ConPort", # Pass name directly
@@ -838,8 +840,8 @@ def main_logic(sys_args=None):
     parser.add_argument(
         "--log-file",
         type=str,
-        default="context_portal/logs/conport.log",
-        help="Path to a file where logs should be written. Defaults to 'context_portal/logs/conport.log'."
+        default="logs/conport.log",
+        help="Path to a file where logs should be written, relative to the context_portal directory. Defaults to 'logs/conport.log'."
     )
     parser.add_argument(
         "--log-level",

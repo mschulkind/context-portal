@@ -2,6 +2,19 @@
 
 <br>
 
+## Version 0.2.18 - Hotfix for Log File Path Resolution
+
+This release provides a hotfix to ensure the log file path is correctly resolved relative to the `context_portal` directory within the workspace, even when overridden by client-provided relative paths.
+
+**Key Fix:**
+
+- **Log Path Resolution:** The logging setup logic in `main.py` has been improved to robustly join the `workspace_id`, the `context_portal` directory, and any relative log file path. This corrects an issue where client-provided relative paths (e.g., `./logs/conport.log`) were incorrectly resolved from the workspace root instead of from within the `context_portal` directory.
+
+**Impact:**
+
+This fix ensures that logs are always created in the intended `context_portal/logs/` directory, improving consistency and organization.
+
+<br>
 ## Version 0.2.17 - Log File Path Standardization
 
 This release changes the default location for the server's log file to a more standardized and predictable path within the workspace.

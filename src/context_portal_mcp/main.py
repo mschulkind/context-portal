@@ -46,12 +46,17 @@ def setup_logging(args: argparse.Namespace):
     # Add file handler if specified
     if args.log_file:
         try:
-            log_dir = os.path.dirname(args.log_file)
+            # If the log file path is relative, it should be relative to the workspace_id
+            log_file_path = args.log_file
+            if not os.path.isabs(log_file_path) and args.workspace_id:
+                log_file_path = os.path.join(args.workspace_id, log_file_path)
+
+            log_dir = os.path.dirname(log_file_path)
             if log_dir and not os.path.exists(log_dir):
                 os.makedirs(log_dir, exist_ok=True)
             
             file_handler = logging.handlers.RotatingFileHandler(
-                args.log_file,
+                log_file_path,
                 maxBytes=10 * 1024 * 1024,  # 10 MB
                 backupCount=5
             )
@@ -85,7 +90,7 @@ async def conport_lifespan(server: FastMCP) -> AsyncIterator[None]:
 
 # --- FastMCP Server Instance ---
 # Version from pyproject.toml would be ideal here, or define centrally
-CONPORT_VERSION = "0.2.16"
+CONPORT_VERSION = "0.2.17"
 
 conport_mcp = FastMCP(
     name="ConPort", # Pass name directly
@@ -833,8 +838,8 @@ def main_logic(sys_args=None):
     parser.add_argument(
         "--log-file",
         type=str,
-        default=None,
-        help="Path to a file where logs should be written. If not provided, logs go to stderr."
+        default="context_portal/logs/conport.log",
+        help="Path to a file where logs should be written. Defaults to 'context_portal/logs/conport.log'."
     )
     parser.add_argument(
         "--log-level",

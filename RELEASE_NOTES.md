@@ -2,6 +2,19 @@
 
 <br>
 
+## Version 0.2.17 - Log File Path Standardization
+
+This release changes the default location for the server's log file to a more standardized and predictable path within the workspace.
+
+**Key Change:**
+
+- **Default Log Path:** The `--log-file` argument now defaults to `context_portal/logs/conport.log`. The server will automatically create this directory structure within the active workspace if it doesn't exist. This keeps project-related files, including logs, neatly organized inside the `context_portal` directory.
+
+**Impact:**
+
+This change improves project organization by preventing log files from cluttering the root of the workspace.
+
+<br>
 ## Version 0.2.16 - IDE Compatibility Fix
 
 This hotfix release addresses a critical startup failure when using the ConPort server with the latest versions of client IDEs (e.g., Roo Code v3.20.0 and later).

@@ -112,7 +112,7 @@ class LogDecisionArgs(BaseArgs):
 
 class GetDecisionsArgs(BaseArgs):
     """Arguments for retrieving decisions."""
-    limit: Optional[int] = Field(None, gt=0, description="Maximum number of decisions to return (most recent first)")
+    limit: Optional[int] = Field(None, ge=1, description="Maximum number of decisions to return (most recent first)")
     tags_filter_include_all: Optional[List[str]] = Field(None, description="Filter: items must include ALL of these tags.")
     tags_filter_include_any: Optional[List[str]] = Field(None, description="Filter: items must include AT LEAST ONE of these tags.")
 
@@ -126,11 +126,11 @@ class GetDecisionsArgs(BaseArgs):
 class SearchDecisionsArgs(BaseArgs):
     """Arguments for searching decisions using FTS."""
     query_term: str = Field(..., min_length=1, description="The term to search for in decisions.")
-    limit: Optional[int] = Field(10, gt=0, description="Maximum number of search results to return.")
+    limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
 
 class DeleteDecisionByIdArgs(BaseArgs):
     """Arguments for deleting a decision by its ID."""
-    decision_id: int = Field(..., gt=0, description="The ID of the decision to delete.")
+    decision_id: int = Field(..., ge=1, description="The ID of the decision to delete.")
 
 # --- Progress Tools ---
 
@@ -158,12 +158,12 @@ class GetProgressArgs(BaseArgs):
     """Arguments for retrieving progress entries."""
     status_filter: Optional[str] = Field(None, description="Filter entries by status")
     parent_id_filter: Optional[int] = Field(None, description="Filter entries by parent task ID")
-    limit: Optional[int] = Field(None, gt=0, description="Maximum number of entries to return (most recent first)")
+    limit: Optional[int] = Field(None, ge=1, description="Maximum number of entries to return (most recent first)")
 
 # New model for updating a progress entry
 class UpdateProgressArgs(BaseArgs):
     """Arguments for updating an existing progress entry."""
-    progress_id: int = Field(..., gt=0, description="The ID of the progress entry to update.")
+    progress_id: int = Field(..., ge=1, description="The ID of the progress entry to update.")
     status: Optional[str] = Field(None, description="New status (e.g., 'TODO', 'IN_PROGRESS', 'DONE')")
     description: Optional[str] = Field(None, min_length=1, description="New description of the progress or task")
     parent_id: Optional[int] = Field(None, description="New ID of the parent task, if changing") # Note: Setting to None might mean clearing parent
@@ -179,7 +179,7 @@ class UpdateProgressArgs(BaseArgs):
 # New model for deleting a progress entry by ID
 class DeleteProgressByIdArgs(BaseArgs):
     """Arguments for deleting a progress entry by its ID."""
-    progress_id: int = Field(..., gt=0, description="The ID of the progress entry to delete.")
+    progress_id: int = Field(..., ge=1, description="The ID of the progress entry to delete.")
 
 # --- System Pattern Tools ---
 
@@ -191,7 +191,7 @@ class LogSystemPatternArgs(BaseArgs):
 
 class GetSystemPatternsArgs(BaseArgs):
     """Arguments for retrieving system patterns."""
-    limit: Optional[int] = Field(None, gt=0, description="Maximum number of patterns to return (most recent first)")
+    limit: Optional[int] = Field(None, ge=1, description="Maximum number of patterns to return (most recent first)")
     tags_filter_include_all: Optional[List[str]] = Field(None, description="Filter: items must include ALL of these tags.")
     tags_filter_include_any: Optional[List[str]] = Field(None, description="Filter: items must include AT LEAST ONE of these tags.")
 
@@ -204,7 +204,7 @@ class GetSystemPatternsArgs(BaseArgs):
 
 class DeleteSystemPatternByIdArgs(BaseArgs):
     """Arguments for deleting a system pattern by its ID."""
-    pattern_id: int = Field(..., gt=0, description="The ID of the system pattern to delete.")
+    pattern_id: int = Field(..., ge=1, description="The ID of the system pattern to delete.")
 
 # --- Custom Data Tools ---
 
@@ -228,12 +228,12 @@ class SearchCustomDataValueArgs(BaseArgs):
     """Arguments for searching custom data values using FTS."""
     query_term: str = Field(..., min_length=1, description="The term to search for in custom data (category, key, or value).")
     category_filter: Optional[str] = Field(None, description="Optional: Filter results to this category after FTS.")
-    limit: Optional[int] = Field(10, gt=0, description="Maximum number of search results to return.")
+    limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
 
 class SearchProjectGlossaryArgs(BaseArgs):
     """Arguments for searching the ProjectGlossary using FTS."""
     query_term: str = Field(..., min_length=1, description="The term to search for in the glossary.")
-    limit: Optional[int] = Field(10, gt=0, description="Maximum number of search results to return.")
+    limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
 
 # --- Export Tool ---
 
@@ -277,7 +277,7 @@ class GetLinkedItemsArgs(BaseArgs):
     # Optional filters for the other end of the link
     linked_item_type_filter: Optional[str] = Field(None, description="Optional: Filter by the type of the linked items")
     # direction_filter: Optional[str] = Field(None, description="Optional: 'source' or 'target' to get links where item_id is source or target. Default all.") # Future enhancement
-    limit: Optional[int] = Field(None, gt=0, description="Maximum number of links to return")
+    limit: Optional[int] = Field(None, ge=1, description="Maximum number of links to return")
 
 # --- Batch Logging Tool ---
 
@@ -291,10 +291,10 @@ class BatchLogItemsArgs(BaseArgs):
 class GetItemHistoryArgs(BaseArgs):
     """Arguments for retrieving history of a context item."""
     item_type: str = Field(..., description="Type of the item: 'product_context' or 'active_context'")
-    limit: Optional[int] = Field(None, gt=0, description="Maximum number of history entries to return (most recent first)")
+    limit: Optional[int] = Field(None, ge=1, description="Maximum number of history entries to return (most recent first)")
     before_timestamp: Optional[datetime] = Field(None, description="Return entries before this timestamp")
     after_timestamp: Optional[datetime] = Field(None, description="Return entries after this timestamp")
-    version: Optional[int] = Field(None, gt=0, description="Return a specific version")
+    version: Optional[int] = Field(None, ge=1, description="Return a specific version")
 
     @model_validator(mode='before')
     @classmethod
@@ -314,9 +314,9 @@ class GetConportSchemaArgs(BaseArgs):
 
 class GetRecentActivitySummaryArgs(BaseArgs):
     """Arguments for retrieving a summary of recent ConPort activity."""
-    hours_ago: Optional[int] = Field(None, gt=0, description="Look back this many hours for recent activity. Mutually exclusive with 'since_timestamp'.")
+    hours_ago: Optional[int] = Field(None, ge=1, description="Look back this many hours for recent activity. Mutually exclusive with 'since_timestamp'.")
     since_timestamp: Optional[datetime] = Field(None, description="Look back for activity since this specific timestamp. Mutually exclusive with 'hours_ago'.")
-    limit_per_type: Optional[int] = Field(5, gt=0, description="Maximum number of recent items to show per activity type (e.g., 5 most recent decisions).")
+    limit_per_type: Optional[int] = Field(5, ge=1, description="Maximum number of recent items to show per activity type (e.g., 5 most recent decisions).")
 
     @model_validator(mode='before')
     @classmethod

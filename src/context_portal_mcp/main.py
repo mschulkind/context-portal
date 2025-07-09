@@ -92,7 +92,7 @@ async def conport_lifespan(server: FastMCP) -> AsyncIterator[None]:
 
 # --- FastMCP Server Instance ---
 # Version from pyproject.toml would be ideal here, or define centrally
-CONPORT_VERSION = "0.2.18"
+CONPORT_VERSION = "0.2.19"
 
 conport_mcp = FastMCP(
     name="ConPort", # Pass name directly
@@ -218,7 +218,7 @@ async def tool_log_decision(
 async def tool_get_decisions(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     ctx: Context,
-    limit: Annotated[Optional[int], Field(gt=0, description="Maximum number of decisions to return (most recent first)")] = None,
+    limit: Annotated[Optional[int], Field(ge=1, description="Maximum number of decisions to return (most recent first)")] = None,
     tags_filter_include_all: Annotated[Optional[List[str]], Field(description="Filter: items must include ALL of these tags.")] = None,
     tags_filter_include_any: Annotated[Optional[List[str]], Field(description="Filter: items must include AT LEAST ONE of these tags.")] = None
 ) -> List[Dict[str, Any]]:
@@ -246,7 +246,7 @@ async def tool_search_decisions_fts(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     query_term: Annotated[str, Field(min_length=1, description="The term to search for in decisions.")],
     ctx: Context,
-    limit: Annotated[Optional[int], Field(default=10, gt=0, description="Maximum number of search results to return.")] = 10
+    limit: Annotated[Optional[int], Field(default=10, ge=1, description="Maximum number of search results to return.")] = 10
 ) -> List[Dict[str, Any]]:
     try:
         pydantic_args = models.SearchDecisionsArgs(
@@ -301,7 +301,7 @@ async def tool_get_progress(
     ctx: Context,
     status_filter: Annotated[Optional[str], Field(description="Filter entries by status")] = None,
     parent_id_filter: Annotated[Optional[int], Field(description="Filter entries by parent task ID")] = None,
-    limit: Annotated[Optional[int], Field(gt=0, description="Maximum number of entries to return (most recent first)")] = None
+    limit: Annotated[Optional[int], Field(ge=1, description="Maximum number of entries to return (most recent first)")] = None
 ) -> List[Dict[str, Any]]:
     try:
         pydantic_args = models.GetProgressArgs(
@@ -321,7 +321,7 @@ async def tool_get_progress(
 @conport_mcp.tool(name="update_progress", description="Updates an existing progress entry.")
 async def tool_update_progress(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
-    progress_id: Annotated[int, Field(gt=0, description="The ID of the progress entry to update.")],
+    progress_id: Annotated[int, Field(ge=1, description="The ID of the progress entry to update.")],
     ctx: Context,
     status: Annotated[Optional[str], Field(description="New status (e.g., 'TODO', 'IN_PROGRESS', 'DONE')")] = None,
     description: Annotated[Optional[str], Field(min_length=1, description="New description of the progress or task")] = None,
@@ -354,7 +354,7 @@ async def tool_update_progress(
 @conport_mcp.tool(name="delete_progress_by_id", description="Deletes a progress entry by its ID.")
 async def tool_delete_progress_by_id(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
-    progress_id: Annotated[int, Field(gt=0, description="The ID of the progress entry to delete.")],
+    progress_id: Annotated[int, Field(ge=1, description="The ID of the progress entry to delete.")],
     ctx: Context
 ) -> Dict[str, Any]:
     """
@@ -402,7 +402,7 @@ async def tool_log_system_pattern(
 async def tool_get_system_patterns(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     ctx: Context,
-    limit: Annotated[Optional[int], Field(gt=0, description="Maximum number of patterns to return")] = None,
+    limit: Annotated[Optional[int], Field(ge=1, description="Maximum number of patterns to return")] = None,
     tags_filter_include_all: Annotated[Optional[List[str]], Field(description="Filter: items must include ALL of these tags.")] = None,
     tags_filter_include_any: Annotated[Optional[List[str]], Field(description="Filter: items must include AT LEAST ONE of these tags.")] = None
 ) -> List[Dict[str, Any]]:
@@ -494,7 +494,7 @@ async def tool_search_project_glossary_fts(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     query_term: Annotated[str, Field(min_length=1, description="The term to search for in the glossary.")],
     ctx: Context,
-    limit: Annotated[Optional[int], Field(default=10, gt=0, description="Maximum number of search results to return.")] = 10
+    limit: Annotated[Optional[int], Field(default=10, ge=1, description="Maximum number of search results to return.")] = 10
 ) -> List[Dict[str, Any]]:
     try:
         pydantic_args = models.SearchProjectGlossaryArgs(
@@ -585,7 +585,7 @@ async def tool_get_linked_items(
     ctx: Context,
     relationship_type_filter: Annotated[Optional[str], Field(description="Optional: Filter by relationship type")] = None,
     linked_item_type_filter: Annotated[Optional[str], Field(description="Optional: Filter by the type of the linked items")] = None,
-    limit: Annotated[Optional[int], Field(gt=0, description="Maximum number of links to return")] = None
+    limit: Annotated[Optional[int], Field(ge=1, description="Maximum number of links to return")] = None
 ) -> List[Dict[str, Any]]:
     try:
         pydantic_args = models.GetLinkedItemsArgs(
@@ -610,7 +610,7 @@ async def tool_search_custom_data_value_fts(
     query_term: Annotated[str, Field(min_length=1, description="The term to search for in custom data (category, key, or value).")],
     ctx: Context,
     category_filter: Annotated[Optional[str], Field(description="Optional: Filter results to this category after FTS.")] = None,
-    limit: Annotated[Optional[int], Field(default=10, gt=0, description="Maximum number of search results to return.")] = 10
+    limit: Annotated[Optional[int], Field(default=10, ge=1, description="Maximum number of search results to return.")] = 10
 ) -> List[Dict[str, Any]]:
     try:
         pydantic_args = models.SearchCustomDataValueArgs(
@@ -655,10 +655,10 @@ async def tool_get_item_history(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     item_type: Annotated[str, Field(description="Type of the item: 'product_context' or 'active_context'")],
     ctx: Context,
-    limit: Annotated[Optional[int], Field(gt=0, description="Maximum number of history entries to return (most recent first)")] = None,
+    limit: Annotated[Optional[int], Field(ge=1, description="Maximum number of history entries to return (most recent first)")] = None,
     before_timestamp: Annotated[Optional[datetime], Field(description="Return entries before this timestamp")] = None,
     after_timestamp: Annotated[Optional[datetime], Field(description="Return entries after this timestamp")] = None,
-    version: Annotated[Optional[int], Field(gt=0, description="Return a specific version")] = None
+    version: Annotated[Optional[int], Field(ge=1, description="Return a specific version")] = None
 ) -> List[Dict[str, Any]]:
     try:
         # The model's own validator will check item_type.
@@ -684,7 +684,7 @@ async def tool_get_item_history(
 @conport_mcp.tool(name="delete_decision_by_id", description="Deletes a decision by its ID.")
 async def tool_delete_decision_by_id(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
-    decision_id: Annotated[int, Field(gt=0, description="The ID of the decision to delete.")],
+    decision_id: Annotated[int, Field(ge=1, description="The ID of the decision to delete.")],
     ctx: Context
 ) -> Dict[str, Any]:
     try:
@@ -697,7 +697,7 @@ async def tool_delete_decision_by_id(
 @conport_mcp.tool(name="delete_system_pattern_by_id", description="Deletes a system pattern by its ID.")
 async def tool_delete_system_pattern_by_id(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
-    pattern_id: Annotated[int, Field(gt=0, description="The ID of the system pattern to delete.")],
+    pattern_id: Annotated[int, Field(ge=1, description="The ID of the system pattern to delete.")],
     ctx: Context
 ) -> Dict[str, Any]:
     try:
@@ -726,9 +726,9 @@ async def tool_get_conport_schema(
 async def tool_get_recent_activity_summary(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     ctx: Context,
-    hours_ago: Annotated[Optional[int], Field(gt=0, description="Look back this many hours for recent activity. Mutually exclusive with 'since_timestamp'.")] = None,
+    hours_ago: Annotated[Optional[int], Field(ge=1, description="Look back this many hours for recent activity. Mutually exclusive with 'since_timestamp'.")] = None,
     since_timestamp: Annotated[Optional[datetime], Field(description="Look back for activity since this specific timestamp. Mutually exclusive with 'hours_ago'.")] = None,
-    limit_per_type: Annotated[Optional[int], Field(default=5, gt=0, description="Maximum number of recent items to show per activity type (e.g., 5 most recent decisions).")] = 5
+    limit_per_type: Annotated[Optional[int], Field(default=5, ge=1, description="Maximum number of recent items to show per activity type (e.g., 5 most recent decisions).")] = 5
 ) -> Dict[str, Any]:
     try:
         # The model's own validator will check hours_ago vs since_timestamp.

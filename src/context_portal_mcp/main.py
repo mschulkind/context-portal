@@ -43,14 +43,13 @@ def setup_logging(args: argparse.Namespace):
 
     root_logger.setLevel(getattr(logging, args.log_level.upper()))
 
-    # Add file handler if specified
-    if args.log_file:
+    # Add file handler if specified and workspace_id is available
+    if args.log_file and args.workspace_id:
         try:
             # If the log file path is relative, it should be resolved from the 'context_portal' subdirectory.
             log_file_path = args.log_file
             if not os.path.isabs(log_file_path):
-                # Default to CWD if workspace_id is not provided, though it's essential for this logic.
-                base_path = args.workspace_id if args.workspace_id else os.getcwd()
+                base_path = args.workspace_id
                 log_file_path = os.path.join(base_path, "context_portal", log_file_path)
 
             log_dir = os.path.dirname(log_file_path)
@@ -68,7 +67,9 @@ def setup_logging(args: argparse.Namespace):
         except Exception as e:
             # Use a temporary basic config to log this error
             logging.basicConfig()
-            log.error(f"Failed to set up file logging to {log_file_path}: {e}")
+            log.error(f"Failed to set up file logging to {args.log_file}: {e}")
+    elif args.log_file:
+        log.warning(f"Log file '{args.log_file}' requested, but no --workspace_id provided at startup. File logging will be deferred.")
 
     # Only add console handler if not in stdio mode
     if args.mode != "stdio":
@@ -880,20 +881,9 @@ def main_logic(sys_args=None):
             log.warning(warning_msg)
             effective_workspace_id = current_cwd
 
-        try:
-            # from src.context_portal_mcp.core.config import get_database_path # Import happens at module level
-            # Call the provisioning function at server startup
-            ensure_alembic_files_exist(Path(effective_workspace_id))
-            # get_database_path(effective_workspace_id) # EARLY VALIDATION REMOVED - Path validation and dir creation will occur on first DB access.
-
-            if not effective_workspace_id or not os.path.isdir(effective_workspace_id): # Basic check if path is a directory
-                 log.error(f"STDIO mode: effective_workspace_id ('{effective_workspace_id}') is not a valid directory. Please ensure client provides a correct absolute path or sets 'cwd' appropriately if using '${{workspaceFolder}}'.")
-                 sys.exit(1)
-
-            log.info(f"STDIO mode: Using effective_workspace_id '{effective_workspace_id}'. Database directory will be created on first actual DB use.")
-        except Exception as e: # Catch any other unexpected errors during this initial workspace_id handling
-            log.error(f"Unexpected error processing effective_workspace_id '{effective_workspace_id}' in STDIO mode setup: {e}")
-            sys.exit(1)
+        # Initialization is now deferred to the first tool call via get_db_connection.
+        # No workspace-specific actions are taken at server startup.
+        log.info("STDIO mode started. Workspace will be initialized on the first tool call.")
 
         # Note: The `FastMCP.run()` method is synchronous and will block until the server stops.
         # It requires the `mcp[cli]` extra to be installed for `mcp.server.stdio.run_server_stdio`.

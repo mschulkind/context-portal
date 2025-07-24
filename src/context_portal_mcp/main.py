@@ -4,6 +4,7 @@ from fastapi import FastAPI
 import logging.handlers
 import argparse
 import os
+import time
 from typing import Dict, Any, Optional, AsyncIterator, List, Annotated
 from pathlib import Path
 from datetime import datetime
@@ -902,6 +903,11 @@ def main_logic(sys_args=None):
             # However, `workspace_id` is not a standard FastMCP setting for `run()`.
             # It's expected to be part of the tool call parameters.
             # The primary role of --workspace_id for stdio here is for the IDE's launch config.
+            
+            # Adding a small delay to mitigate potential race conditions on startup in some environments.
+            log.info("Adding 500ms startup delay for stdio mode.")
+            time.sleep(0.5)
+
             conport_mcp.run(transport="stdio")
         except Exception as e:
             log.exception("Error running FastMCP in STDIO mode")

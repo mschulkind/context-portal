@@ -1,10 +1,11 @@
-# Release Notes
+# Context Portal MCP Release Notes
+
+<br>
 
 ## v0.2.19 (2025-07-09)
 
 ### Bug Fixes
 *   **Pydantic Validation:** Corrected a type coercion issue where Pydantic's `gt=0` constraint for integer fields would fail when receiving numbers from the JSON-based MCP protocol. The validation has been updated to the more robust `ge=1` (greater than or equal to 1) to ensure compatibility. (Credit: @akeech-chatham)
-# Context Portal MCP Release Notes
 
 <br>
 

@@ -250,6 +250,79 @@ def upgrade() -> None:
     # Seed initial data
     op.execute("INSERT INTO product_context (id, content) VALUES (1, '{}')")
     op.execute("INSERT INTO active_context (id, content) VALUES (1, '{}')")
+
+    # Create FTS5 virtual table for decisions
+    op.execute('''
+    CREATE VIRTUAL TABLE decisions_fts USING fts5(
+        summary,
+        rationale,
+        implementation_details,
+        tags,
+        content="decisions",
+        content_rowid="id"
+    );
+    ''')
+
+    # Create triggers to keep the FTS table in sync with the decisions table
+    op.execute('''
+    CREATE TRIGGER decisions_after_insert AFTER INSERT ON decisions
+    BEGIN
+        INSERT INTO decisions_fts (rowid, summary, rationale, implementation_details, tags)
+        VALUES (new.id, new.summary, new.rationale, new.implementation_details, new.tags);
+    END;
+    ''')
+    op.execute('''
+    CREATE TRIGGER decisions_after_delete AFTER DELETE ON decisions
+    BEGIN
+        INSERT INTO decisions_fts (decisions_fts, rowid, summary, rationale, implementation_details, tags)
+        VALUES ('delete', old.id, old.summary, old.rationale, old.implementation_details, old.tags);
+    END;
+    ''')
+    op.execute('''
+    CREATE TRIGGER decisions_after_update AFTER UPDATE ON decisions
+    BEGIN
+        INSERT INTO decisions_fts (decisions_fts, rowid, summary, rationale, implementation_details, tags)
+        VALUES ('delete', old.id, old.summary, old.rationale, old.implementation_details, old.tags);
+        INSERT INTO decisions_fts (rowid, summary, rationale, implementation_details, tags)
+        VALUES (new.id, new.summary, new.rationale, new.implementation_details, new.tags);
+    END;
+    ''')
+
+    # Create FTS5 virtual table for custom_data
+    op.execute('''
+    CREATE VIRTUAL TABLE custom_data_fts USING fts5(
+        category,
+        key,
+        value_text,
+        content="custom_data",
+        content_rowid="id"
+    );
+    ''')
+
+    # Create triggers for custom_data_fts
+    op.execute('''
+    CREATE TRIGGER custom_data_after_insert AFTER INSERT ON custom_data
+    BEGIN
+        INSERT INTO custom_data_fts (rowid, category, key, value_text)
+        VALUES (new.id, new.category, new.key, new.value);
+    END;
+    ''')
+    op.execute('''
+    CREATE TRIGGER custom_data_after_delete AFTER DELETE ON custom_data
+    BEGIN
+        INSERT INTO custom_data_fts (custom_data_fts, rowid, category, key, value_text)
+        VALUES ('delete', old.id, old.category, old.key, old.value);
+    END;
+    ''')
+    op.execute('''
+    CREATE TRIGGER custom_data_after_update AFTER UPDATE ON custom_data
+    BEGIN
+        INSERT INTO custom_data_fts (custom_data_fts, rowid, category, key, value_text)
+        VALUES ('delete', old.id, old.category, old.key, old.value);
+        INSERT INTO custom_data_fts (rowid, category, key, value_text)
+        VALUES (new.id, new.category, new.key, new.value);
+    END;
+    ''')
     # ### end Alembic commands ###
 
 
@@ -276,25 +349,35 @@ def downgrade() -> None:
 _connections: Dict[str, sqlite3.Connection] = {}
 
 def get_db_connection(workspace_id: str) -> sqlite3.Connection:
-    """Gets or creates a database connection for the given workspace."""
-    """Gets or creates a database connection for the given workspace."""
+    """
+    Gets or creates a database connection for the given workspace.
+    This function now orchestrates the entire workspace initialization on first call.
+    """
     if workspace_id in _connections:
         return _connections[workspace_id]
 
+    # 1. Ensure all necessary directories and Alembic files are present.
+    # This is the core of the deferred initialization.
+    ensure_alembic_files_exist(Path(workspace_id))
+
+    # 2. Get the database path (which should now exist within the created directories).
     db_path = get_database_path(workspace_id)
     
-    # Run migrations before connecting to ensure schema is up-to-date
-    # This will create the database file if it doesn't exist
+    # 3. Run migrations to create/update the database schema.
     run_migrations(db_path, Path(workspace_id))
 
+    # 4. Establish and cache the database connection.
     try:
         conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         conn.row_factory = sqlite3.Row # Access columns by name
         _connections[workspace_id] = conn
+        log.info(f"Successfully initialized and connected to database for workspace: {workspace_id}")
         return conn
     except ConfigurationError as e:
+        log.error(f"Configuration error during DB connection for {workspace_id}: {e}")
         raise DatabaseError(f"Configuration error getting DB path for {workspace_id}: {e}")
     except sqlite3.Error as e:
+        log.error(f"SQLite error during DB connection for {workspace_id} at {db_path}: {e}")
         raise DatabaseError(f"Failed to connect to database for {workspace_id} at {db_path}: {e}")
 
 def close_db_connection(workspace_id: str):
@@ -1234,6 +1317,7 @@ def get_context_links(
     params = tuple(params_list)
 
     try:
+        cursor = conn.cursor()
         cursor.execute(sql, params)
         rows = cursor.fetchall()
         links = [
@@ -1409,6 +1493,7 @@ def get_item_history(
     params = tuple(params_list)
 
     try:
+        cursor = conn.cursor()
         cursor.execute(sql, params)
         rows = cursor.fetchall()
         history_entries = []

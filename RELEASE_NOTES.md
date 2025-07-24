@@ -2,6 +2,22 @@
 
 <br>
 
+## v0.2.21 (2025-07-24)
+
+### Features & Fixes
+*   **Deferred Workspace Initialization:** The server now initializes the workspace and database on the first tool call rather than on startup. This resolves a critical issue where an invalid or un-expanded `${workspaceFolder}` variable from the client would prevent the server from starting. (Credit: @yy1588133)
+*   **Full-Text Search (FTS):** Introduced FTS5 virtual tables for `decisions` and `custom_data`. This significantly enhances search capabilities within ConPort. (Credit: @yy1588133)
+*   **Comprehensive Test Suite:** Added a new test script (`test_conport_tools.py`) to validate all ConPort MCP tools, improving stability and reliability. (Credit: @yy1588133)
+
+<br>
+
+## v0.2.20 (2025-07-23)
+
+### Bug Fixes
+Applied a fix to resolve the intermittent connection issue with the ConPort MCP server. A 500ms delay has been added to the startup sequence in src/context_portal_mcp/main.py to prevent a race condition. 
+
+<br>
+
 ## v0.2.19 (2025-07-09)
 
 ### Bug Fixes
@@ -22,6 +38,7 @@ This release provides a hotfix to ensure the log file path is correctly resolved
 This fix ensures that logs are always created in the intended `context_portal/logs/` directory, improving consistency and organization.
 
 <br>
+
 ## Version 0.2.17 - Log File Path Standardization
 
 This release changes the default location for the server's log file to a more standardized and predictable path within the workspace.
@@ -35,6 +52,7 @@ This release changes the default location for the server's log file to a more st
 This change improves project organization by preventing log files from cluttering the root of the workspace.
 
 <br>
+
 ## Version 0.2.16 - IDE Compatibility Fix
 
 This hotfix release addresses a critical startup failure when using the ConPort server with the latest versions of client IDEs (e.g., Roo Code v3.20.0 and later).
@@ -48,6 +66,7 @@ This hotfix release addresses a critical startup failure when using the ConPort 
 This is a critical update for all users to ensure compatibility with the latest development tools. The server should now start and run reliably when launched from any IDE.
 
 <br>
+
 ## Version 0.2.14 - Database Stability and Bug Fixes
 
 This release addresses a series of critical bugs related to database initialization and Alembic migrations, significantly improving the stability and reliability of the ConPort server.
@@ -63,6 +82,7 @@ This release addresses a series of critical bugs related to database initializat
 This is a critical stability release. All users should upgrade to ensure reliable database operation and to benefit from the bug fixes.
 
 <br>
+
 ## Version 0.2.11 - Cursor Initialization Hotfix
 
 This release addresses a critical bug that caused `NameError: name 'cursor' is not defined` during database operations.

@@ -882,9 +882,19 @@ def main_logic(sys_args=None):
             log.warning(warning_msg)
             effective_workspace_id = current_cwd
 
-        # Initialization is now deferred to the first tool call via get_db_connection.
-        # No workspace-specific actions are taken at server startup.
-        log.info("STDIO mode started. Workspace will be initialized on the first tool call.")
+        # Pre-warm the database connection to trigger one-time initialization (e.g., migrations)
+        # before the MCP transport starts. This prevents timeouts on the client's first tool call.
+        if effective_workspace_id:
+            try:
+                log.info(f"Pre-warming database connection for workspace: {effective_workspace_id}")
+                database.get_db_connection(effective_workspace_id)
+                log.info("Database connection pre-warmed successfully.")
+            except Exception as e:
+                log.error(f"Failed to pre-warm database connection for workspace '{effective_workspace_id}': {e}")
+                # If the DB is essential, exiting is safer than continuing in a broken state.
+                sys.exit(1)
+        else:
+            log.warning("No effective_workspace_id available at startup. Database initialization will be deferred to the first tool call.")
 
         # Note: The `FastMCP.run()` method is synchronous and will block until the server stops.
         # It requires the `mcp[cli]` extra to be installed for `mcp.server.stdio.run_server_stdio`.
@@ -893,11 +903,6 @@ def main_logic(sys_args=None):
             # However, `workspace_id` is not a standard FastMCP setting for `run()`.
             # It's expected to be part of the tool call parameters.
             # The primary role of --workspace_id for stdio here is for the IDE's launch config.
-            
-            # Adding a small delay to mitigate potential race conditions on startup in some environments.
-            log.info("Adding 500ms startup delay for stdio mode.")
-            time.sleep(0.5)
-
             conport_mcp.run(transport="stdio")
         except Exception as e:
             log.exception("Error running FastMCP in STDIO mode")

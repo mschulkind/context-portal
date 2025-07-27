@@ -2,6 +2,13 @@
 
 <br>
 
+## v0.2.22 (2025-07-27)
+
+### Bug Fixes
+*   **Startup Timeout:** Resolved a client-side timeout issue by pre-warming the database connection on server startup. This ensures the server is fully initialized before accepting connections, preventing timeouts on the first tool call.
+
+<br>
+
 ## v0.2.21 (2025-07-24)
 
 ### Features & Fixes

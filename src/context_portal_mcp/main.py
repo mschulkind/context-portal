@@ -876,11 +876,26 @@ def main_logic(sys_args=None):
             warning_msg = (
                 f"MAIN.PY: WARNING - Workspace ID was literally '${{workspaceFolder}}'. "
                 f"This variable was not expanded by the client IDE. "
-                f"Falling back to current working directory as workspace_id: {current_cwd}. "
-                f"Ensure CWD in MCP config ('{current_cwd}') is the correct project workspace."
+                f"Client will defer resolution. Current working directory is: {current_cwd}. "
+                f"If this path is inside the ConPort server install, we will skip pre-initialization and defer DB setup to first tool call to avoid misplacing DB files."
             )
             log.warning(warning_msg)
-            effective_workspace_id = current_cwd
+
+            # If the CWD is within the server install directory, skip pre-warm to avoid
+            # creating DB files inside the package tree. Defer to per-call workspace_id.
+            try:
+                server_root = str(CONPORT_SERVER_ROOT_DIR)
+                if os.path.commonpath([server_root, current_cwd]) == server_root:
+                    log.warning(
+                        "Detected CWD within ConPort server install directory; skipping DB pre-warm and deferring initialization to first tool call."
+                    )
+                    effective_workspace_id = None
+                else:
+                    # Use CWD only if it is outside the server install directory
+                    effective_workspace_id = current_cwd
+            except Exception:
+                # On any resolution error, defer initialization
+                effective_workspace_id = None
 
         # Pre-warm the database connection to trigger one-time initialization (e.g., migrations)
         # before the MCP transport starts. This prevents timeouts on the client's first tool call.

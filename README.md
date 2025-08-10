@@ -64,7 +64,7 @@ Before you begin, ensure you have the following installed:
 
 The recommended way to install and run ConPort is by using `uvx` to execute the package directly from PyPI. This method avoids the need to manually create and manage virtual environments.
 
-### `uvx` Configuration
+### `uvx` Configuration (Recommended for most IDEs)
 
 In your MCP client settings (e.g., `mcp_settings.json`), use the following configuration:
 
@@ -97,13 +97,9 @@ In your MCP client settings (e.g., `mcp_settings.json`), use the following confi
 - `--log-file`: Optional: Path to a file where server logs will be written. If not provided, logs are directed to `stderr` (console). Useful for persistent logging and debugging server behavior.
 - `--log-level`: Optional: Sets the minimum logging level for the server. Valid choices are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`. Defaults to `INFO`. Set to `DEBUG` for verbose output during development or troubleshooting.
 
-> Note on client variable expansion
->
-> Some MCP clients do not expand `${workspaceFolder}` before launching the server. In those cases, the server used to attempt DB initialization in its own install directory and fail. As of this change, the server detects a literal `${workspaceFolder}` and defers database initialization until the first tool call to avoid misplacement. You have two safe options:
->
-> 1) Provide an absolute path instead of `${workspaceFolder}`.
->
-> 2) Omit `--workspace_id` entirely and rely on per-call `workspace_id` arguments (recommended if your client reliably passes `workspace_id` with each tool call).
+> Important: Many IDEs do not expand `${workspaceFolder}` when launching MCP servers. Use one of these safe options:
+> 1) Provide an absolute path for `--workspace_id`.
+> 2) Omit `--workspace_id` at launch and rely on per-call `workspace_id` (recommended if your client provides it on every call).
 
 Alternative configuration (no `--workspace_id` at launch):
 
@@ -134,65 +130,71 @@ If you omit `--workspace_id`, the server will skip pre-initialization and initia
 
 ## Installation for Developers (from Git Repository)
 
-These instructions guide you through setting up ConPort for development or contribution by cloning its Git repository and installing dependencies.
+The most appropriate way to develop and test ConPort is to run it in your IDE as an MCP server using the configuration above. This exercises STDIO mode and real client behavior.
 
-1.  **Clone the Repository:**
-    Open your terminal or command prompt and run:
+If you need to run against a local checkout and virtualenv, you can configure your MCP client to launch the dev server via `uv run` and your `.venv/bin/python`:
 
-    ```bash
-    git clone https://github.com/GreatScottyMac/context-portal.git
-    cd context-portal
-    ```
+```json
+{
+  "mcpServers": {
+    "conport": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--python",
+        ".venv/bin/python",
+        "--directory",
+        "<path to context-portal repo> ",
+        "conport-mcp",
+        "--mode",
+        "stdio",
+        "--log-file",
+        "./logs/conport-dev.log",
+        "--log-level",
+        "DEBUG"
+      ],
+      "disabled": false
+    }
+  }
+}
+```
 
-2.  **Create and Activate a Virtual Environment:**
-    In the `context-portal` directory:
+Notes:
+- Set `--directory` to your repo path; this uses your local checkout and venv interpreter.
+- Logs go to `./logs/conport-dev.log` with `DEBUG` verbosity.
 
-    ```bash
-    uv venv
-    ```
 
-    Activate the environment:
-    - **Linux/macOS (bash/zsh):**
-      ```bash
-      source .venv/bin/activate
-      ```
-    - **Windows (Command Prompt):**
-      ```cmd
-      .venv\Scripts\activate.bat
-      ```
-    - **Windows (PowerShell):**
-      ```powershell
-      .venv\Scripts\Activate.ps1
-      ```
+### Local environment setup
 
-3.  **Install Dependencies:**
-    With your virtual environment activated:
+Set up for development or contribution via the Git repo.
 
-    ```bash
-    uv pip install -r requirements.txt
-    ```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/GreatScottyMac/context-portal.git
+   cd context-portal
+   ```
 
-4.  **Verify Installation (Optional):**
-    Ensure your virtual environment is activated.
-    
-    ```bash
-    uv run python src/context_portal_mcp/main.py --help
-    ```
-    This should output the command-line help for the ConPort server.
+2. **Create a virtual environment**
+   ```bash
+   uv venv
+   ```
+   Activate it using your shell’s standard activation (e.g., `source .venv/bin/activate` on macOS/Linux).
 
-<br>
+3. **Install dependencies**
+   ```bash
+   uv pip install -r requirements.txt
+   ```
 
-**Purpose of the `--workspace_id` Command-Line Argument:**
+4. **Run in your IDE (recommended)**
+   Configure your IDE’s MCP settings using the "uvx Configuration" or the dev `uv run` configuration shown above. This is the most representative test of ConPort in STDIO mode.
 
-When you launch the ConPort server, particularly in STDIO mode (`--mode stdio`), the `--workspace_id` argument serves several key purposes:
+5. **Optional: CLI help**
+   ```bash
+   uv run python src/context_portal_mcp/main.py --help
+   ```
 
-1.  **Initial Server Context:** It provides the server process with the absolute path to the project workspace it should initially be associated with.
-2.  **Critical Safety Check:** In STDIO mode, this path is used to perform a vital check that prevents the server from mistakenly creating its database files (`context.db`, `conport_vector_data/`) inside its own installation directory. This protects against misconfigurations where the client might not correctly provide the workspace path.
-3.  **Client Launch Signal:** It's the standard way for an MCP client (like an IDE extension) to signal to the server which project it is launching for.
-
-**Important Note:** The `--workspace_id` provided at server startup is **not** automatically used as the `workspace_id` parameter for every subsequent MCP tool call. ConPort tools are designed to require the `workspace_id` parameter explicitly in each call (e.g., `get_product_context({"workspace_id": "..."})`). This design supports the possibility of a single server instance managing multiple workspaces and ensures clarity for each operation. Your client IDE/MCP client is responsible for providing the correct `workspace_id` with each tool call.
-
-**Key Takeaway:** ConPort critically relies on an accurate `--workspace_id` to identify the target project. Ensure this argument correctly resolves to the absolute path of your project workspace, either through IDE variables like `${workspaceFolder}` or by providing a direct absolute path.
+Notes:
+- For `--workspace_id` behavior and IDE path handling, see the guidance under the "uvx Configuration" section above. Many IDEs do not expand `${workspaceFolder}`.
 
 <br>
 
@@ -244,6 +246,23 @@ These instructions equip the LLM with the knowledge to:
   To ensure the LLM agent correctly initializes and loads context, especially in interfaces that might not always strictly adhere to custom instructions on the first message, it's a good practice to start your interaction with a clear directive like:
   `Initialize according to custom instructions.`
   This can help prompt the agent to perform its ConPort initialization sequence as defined in its strategy file.
+
+### New Strategy Set: mem4sprint (What’s new)
+
+The repository includes a new strategy/documentation set focused on sprint planning and operational flows:
+
+- `conport-custom-instructions/mem4sprint.md` — concise guidance and patterns for using flat categories and valid FTS prefixes.
+- `conport-custom-instructions/mem4sprint.schema_and_templates.md` — meta schema, compact starters, FTS query rules, and minimal operational call recipes.
+
+Key highlights:
+- Flat category model (e.g., `artifacts`, `rfc_doc`, `retrospective`, `ProjectGlossary`, `critical_settings`).
+- Valid FTS5 prefixes only: `category:`, `key:`, `value_text:` for custom data; `summary:`, `rationale:`, `implementation_details:`, `tags:` for decisions.
+- Handler-layer query normalization; database layer remains unchanged.
+
+Release note summary:
+- Added mem4sprint strategy/docs with flattened categories and explicit FTS rules.
+- Simplified examples and included minimal operational call recipes.
+- Documentation clarifies IDE workspace path handling for MCP.
 
 ## Initial ConPort Usage in a Workspace
 

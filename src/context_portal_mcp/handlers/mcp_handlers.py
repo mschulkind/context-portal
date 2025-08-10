@@ -20,6 +20,43 @@ log = logging.getLogger(__name__)
 
 # --- Tool Handler Functions ---
 
+# --- FTS Query Utilities (handler layer) ---
+def _prepare_fts_query(query: str, allowed_columns: Optional[List[str]] = None, default_column: Optional[str] = None) -> str:
+    """Normalize user-provided FTS MATCH queries to avoid parser errors without touching DB layer.
+
+    - If the query contains a colon but not with a known column prefix, treat it as a literal.
+    - If it contains characters like '.' or '"' that cause parse errors, treat as a literal.
+    - When default_column is provided, prefix the literal with that column.
+    """
+    if query is None:
+        return ""
+    q = query.strip()
+    if not q:
+        return q
+
+    has_known_prefix = False
+    if allowed_columns:
+        for c in allowed_columns:
+            if f"{c}:" in q:
+                has_known_prefix = True
+                break
+
+    def as_literal(text: str) -> str:
+        esc = text.replace('"', '""')
+        if default_column:
+            return f"{default_column}:\"{esc}\""
+        return f"\"{esc}\""
+
+    # If colon is present but not using a known prefix, treat entire query as literal
+    if ':' in q and not has_known_prefix:
+        return as_literal(q)
+
+    # If special characters that commonly break the parser are present, quote as literal
+    if any(ch in q for ch in ['.', '/', '\\', '"']) and not has_known_prefix:
+        return as_literal(q)
+
+    return q
+
 def handle_get_product_context(args: models.GetContextArgs) -> Dict[str, Any]:
     """
     Handles the 'get_product_context' MCP tool.
@@ -138,9 +175,14 @@ def handle_search_decisions_fts(args: models.SearchDecisionsArgs) -> List[Dict[s
     Returns a list of decision dictionaries.
     """
     try:
+        safe_query = _prepare_fts_query(
+            args.query_term,
+            allowed_columns=["summary", "rationale", "implementation_details", "tags"],
+            default_column="summary",
+        )
         decisions_list = db.search_decisions_fts(
             args.workspace_id,
-            query_term=args.query_term,
+            query_term=safe_query,
             limit=args.limit
         )
         return [d.model_dump(mode='json') for d in decisions_list]
@@ -556,9 +598,14 @@ def handle_search_project_glossary_fts(args: models.SearchProjectGlossaryArgs) -
     Returns a list of glossary entry dictionaries.
     """
     try:
+        safe_query = _prepare_fts_query(
+            args.query_term,
+            allowed_columns=["category", "key", "value_text"],
+            default_column="value_text",
+        )
         glossary_entries = db.search_project_glossary_fts(
             args.workspace_id,
-            query_term=args.query_term,
+            query_term=safe_query,
             limit=args.limit
         )
         return [entry.model_dump(mode='json') for entry in glossary_entries]
@@ -574,9 +621,14 @@ def handle_search_custom_data_value_fts(args: models.SearchCustomDataValueArgs) 
     Searches custom data entries using FTS, optionally filtered by category.
     """
     try:
+        safe_query = _prepare_fts_query(
+            args.query_term,
+            allowed_columns=["category", "key", "value_text"],
+            default_column="value_text",
+        )
         results = db.search_custom_data_value_fts(
             args.workspace_id,
-            query_term=args.query_term,
+            query_term=safe_query,
             category_filter=args.category_filter,
             limit=args.limit
         )
@@ -747,8 +799,14 @@ def _format_progress_md(progress_entries: List[models.ProgressEntry]) -> str:
     return "".join(lines)
 
 def _format_system_patterns_md(patterns: List[models.SystemPattern]) -> str:
+    from datetime import timezone
+
+    def _to_aware_utc(dt):
+        # Treat naive as UTC for export consistency
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+
     lines = ["# System Patterns\n"]
-    for pattern in sorted(patterns, key=lambda x: x.timestamp, reverse=True): # Sort by timestamp
+    for pattern in sorted(patterns, key=lambda x: _to_aware_utc(x.timestamp), reverse=True): # Sort by timestamp
         lines.append("\n---\n")
         lines.append(f"## {pattern.name}\n")
         lines.append(f"*   [{pattern.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]\n") # Add timestamp

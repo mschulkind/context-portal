@@ -396,12 +396,14 @@ def close_all_connections():
 def ensure_alembic_files_exist(workspace_root_dir: Path):
     """
     Ensures that alembic.ini and the alembic/ directory exist within the
-    workspace's context_portal directory. If not, copies them from the
-    server's internal templates.
+    database directory. If not, copies them from the server's internal templates.
     """
     # The actual directory where context.db resides and where Alembic files should be
-    conport_db_dir = workspace_root_dir / "context_portal"
-    conport_db_dir.mkdir(exist_ok=True) # Ensure this directory exists
+    # Get the database path to determine where Alembic files should be located
+    from ..core.config import get_database_path
+    db_path = get_database_path(str(workspace_root_dir))
+    conport_db_dir = db_path.parent
+    conport_db_dir.mkdir(exist_ok=True, parents=True) # Ensure this directory exists
 
     alembic_ini_path = conport_db_dir / "alembic.ini"
     alembic_dir_path = conport_db_dir / "alembic"
@@ -446,10 +448,11 @@ def run_migrations(db_path: Path, workspace_root_dir: Path):
     """
     Runs Alembic migrations to upgrade the database to the latest version.
     This function is called on database connection to ensure schema is up-to-date.
+    Alembic files are expected to be in the same directory as the database file.
     """
     # The directory where alembic.ini and alembic/ scripts are expected to be,
     # which is now the same directory as the database file.
-    alembic_config_and_scripts_dir = workspace_root_dir / "context_portal"
+    alembic_config_and_scripts_dir = db_path.parent
 
     alembic_ini_path = alembic_config_and_scripts_dir / "alembic.ini"
     alembic_scripts_path = alembic_config_and_scripts_dir / "alembic"

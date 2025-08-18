@@ -846,6 +846,13 @@ def main_logic(sys_args=None):
         help="Path to a file where logs should be written, relative to the context_portal directory. Defaults to 'logs/conport.log'."
     )
     parser.add_argument(
+        "--db-path",
+        type=str,
+        required=False,
+        help="Custom database file path (absolute or relative to workspace). "
+             "Defaults to 'context_portal/context.db' in workspace."
+    )
+    parser.add_argument(
         "--log-level",
         type=str,
         default="INFO",
@@ -857,6 +864,12 @@ def main_logic(sys_args=None):
 
     # Configure logging based on the parsed arguments
     setup_logging(args)
+
+    # Set custom database path if provided
+    if args.db_path:
+        from .core import config
+        config.set_custom_db_path(args.db_path)
+        log.info(f"Using custom database path: {args.db_path}")
 
     log.info(f"Parsed CLI args: {args}")
 

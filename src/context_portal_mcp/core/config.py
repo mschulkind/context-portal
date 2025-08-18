@@ -1,10 +1,21 @@
 import os
 import pathlib
 import logging
+from typing import Optional
 
 # Placeholder for application settings and configuration logic
 
 log = logging.getLogger(__name__)
+
+# Global variable to store custom database path
+_custom_db_path: Optional[str] = None
+
+def set_custom_db_path(path: Optional[str]):
+    """Set a custom database path."""
+    global _custom_db_path
+    _custom_db_path = path
+    if path:
+        log.info(f"Custom database path set to: {path}")
 
 def get_database_path(workspace_id: str) -> pathlib.Path:
     log.debug(f"get_database_path received workspace_id: {workspace_id}")
@@ -20,6 +31,26 @@ def get_database_path(workspace_id: str) -> pathlib.Path:
     Raises:
         ValueError: If the workspace_id is invalid or the path cannot be determined.
     """
+    # Check if custom database path is set
+    if _custom_db_path:
+        custom_path = pathlib.Path(_custom_db_path)
+        if custom_path.is_absolute():
+            # Absolute path - use as-is
+            log.debug(f"Using custom absolute database path: {custom_path}")
+            # Ensure parent directory exists
+            custom_path.parent.mkdir(parents=True, exist_ok=True)
+            return custom_path
+        else:
+            # Relative path - resolve relative to workspace
+            posix_workspace_id = workspace_id.replace('\\', '/')
+            workspace_path = pathlib.Path(posix_workspace_id)
+            resolved_path = workspace_path / custom_path
+            log.debug(f"Using custom relative database path: {resolved_path}")
+            # Ensure parent directory exists
+            resolved_path.parent.mkdir(parents=True, exist_ok=True)
+            return resolved_path
+
+    # Default behavior (unchanged)
     # Basic example: Assume workspace_id is the workspace root path
     # Store DB in a .context_portal directory within the workspace
     # Ensure workspace_id uses POSIX separators for consistency within Docker

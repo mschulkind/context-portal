@@ -358,13 +358,13 @@ def get_db_connection(workspace_id: str) -> sqlite3.Connection:
 
     # 1. Ensure all necessary directories and Alembic files are present.
     # This is the core of the deferred initialization.
-    ensure_alembic_files_exist(Path(workspace_id))
+    ensure_alembic_files_exist(workspace_id)
 
     # 2. Get the database path (which should now exist within the created directories).
     db_path = get_database_path(workspace_id)
     
     # 3. Run migrations to create/update the database schema.
-    run_migrations(db_path, Path(workspace_id))
+    run_migrations(db_path)
 
     # 4. Establish and cache the database connection.
     try:
@@ -393,7 +393,7 @@ def close_all_connections():
 
 # --- Alembic Migration Integration ---
 
-def ensure_alembic_files_exist(workspace_root_dir: Path):
+def ensure_alembic_files_exist(workspace_id: str):
     """
     Ensures that alembic.ini and the alembic/ directory exist within the
     database directory. If not, copies them from the server's internal templates.
@@ -401,7 +401,7 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
     # The actual directory where context.db resides and where Alembic files should be
     # Get the database path to determine where Alembic files should be located
     from ..core.config import get_database_path
-    db_path = get_database_path(str(workspace_root_dir))
+    db_path = get_database_path(workspace_id)
     conport_db_dir = db_path.parent
     conport_db_dir.mkdir(exist_ok=True, parents=True) # Ensure this directory exists
 
@@ -444,7 +444,7 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
             log.error(f"Failed to create initial schema at {initial_schema_path}: {e}")
             raise DatabaseError(f"Could not create initial schema: {e}")
 
-def run_migrations(db_path: Path, workspace_root_dir: Path):
+def run_migrations(db_path: Path):
     """
     Runs Alembic migrations to upgrade the database to the latest version.
     This function is called on database connection to ensure schema is up-to-date.

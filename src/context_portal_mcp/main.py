@@ -47,11 +47,18 @@ def setup_logging(args: argparse.Namespace):
     # Add file handler if specified and workspace_id is available
     if args.log_file and args.workspace_id:
         try:
-            # If the log file path is relative, it should be resolved from the 'context_portal' subdirectory.
             log_file_path = args.log_file
             if not os.path.isabs(log_file_path):
-                base_path = args.workspace_id
-                log_file_path = os.path.join(base_path, "context_portal", log_file_path)
+                # This is a bit of a chicken-and-egg problem. We need the config to know the base path,
+                # but the config isn't fully set up yet. We can read the args directly.
+                if args.base_path:
+                    base_path = Path(args.base_path).expanduser()
+                    sanitized_workspace_id = args.workspace_id.replace('/', '_').replace('\\', '_')
+                    log_dir = base_path / sanitized_workspace_id / "logs"
+                    log_file_path = log_dir / os.path.basename(args.log_file)
+                else:
+                    base_path = args.workspace_id
+                    log_file_path = os.path.join(base_path, "context_portal", log_file_path)
 
             log_dir = os.path.dirname(log_file_path)
             if log_dir and not os.path.exists(log_dir):
@@ -853,6 +860,18 @@ def main_logic(sys_args=None):
              "Defaults to 'context_portal/context.db' in workspace."
     )
     parser.add_argument(
+        "--base-path",
+        type=str,
+        required=False,
+        help="Base path for storing all workspace-specific data. A subdirectory will be created for each workspace."
+    )
+    parser.add_argument(
+        "--db-filename",
+        type=str,
+        default="context.db",
+        help="The name of the context database file. Defaults to 'context.db'."
+    )
+    parser.add_argument(
         "--log-level",
         type=str,
         default="INFO",
@@ -870,6 +889,16 @@ def main_logic(sys_args=None):
         from .core import config
         config.set_custom_db_path(args.db_path)
         log.info(f"Using custom database path: {args.db_path}")
+
+    if args.base_path:
+        from .core import config
+        config.set_base_path(args.base_path)
+        log.info(f"Using base path: {args.base_path}")
+
+    if args.db_filename:
+        from .core import config
+        config.set_db_filename(args.db_filename)
+        log.info(f"Using database filename: {args.db_filename}")
 
     log.info(f"Parsed CLI args: {args}")
 

@@ -2,6 +2,10 @@
 
 <br>
 
+I apologize for not updating ConPort lately but it's definitely not abandoned. I should be able to put some time into it starting next month (Sept 2025). I greatly appreciate the pending PRs and suggestions!
+
+<br>
+
 # Context Portal MCP (ConPort)
 
 ## (It's a memory bank!)

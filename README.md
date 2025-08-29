@@ -101,6 +101,39 @@ In your MCP client settings (e.g., `mcp_settings.json`), use the following confi
 - `--log-file`: Optional: Path to a file where server logs will be written. If not provided, logs are directed to `stderr` (console). Useful for persistent logging and debugging server behavior.
 - `--log-level`: Optional: Sets the minimum logging level for the server. Valid choices are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`. Defaults to `INFO`. Set to `DEBUG` for verbose output during development or troubleshooting.
 
+> Note on client variable expansion
+>
+> Some MCP clients do not expand `${workspaceFolder}` before launching the server. In those cases, the server used to attempt DB initialization in its own install directory and fail. As of this change, the server detects a literal `${workspaceFolder}` and defers database initialization until the first tool call to avoid misplacement. You have two safe options:
+>
+> 1) Provide an absolute path instead of `${workspaceFolder}`.
+>
+> 2) Omit `--workspace_id` entirely and rely on per-call `workspace_id` arguments (recommended if your client reliably passes `workspace_id` with each tool call).
+
+Alternative configuration (no `--workspace_id` at launch):
+
+```json
+{
+  "mcpServers": {
+    "conport": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "context-portal-mcp",
+        "conport-mcp",
+        "--mode",
+        "stdio",
+        "--log-file",
+        "./logs/conport.log",
+        "--log-level",
+        "INFO"
+      ]
+    }
+  }
+}
+```
+
+If you omit `--workspace_id`, the server will skip pre-initialization and initialize the database on the first tool call using the `workspace_id` provided in that call.
+
 <br>
 
 ## Installation for Developers (from Git Repository)

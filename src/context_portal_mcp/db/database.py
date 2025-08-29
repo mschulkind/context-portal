@@ -364,13 +364,13 @@ def get_db_connection(workspace_id: str) -> sqlite3.Connection:
 
     # 1. Ensure all necessary directories and Alembic files are present.
     # This is the core of the deferred initialization.
-    ensure_alembic_files_exist(Path(workspace_id))
+    ensure_alembic_files_exist(workspace_id)
 
     # 2. Get the database path (which should now exist within the created directories).
     db_path = get_database_path(workspace_id)
     
     # 3. Run migrations to create/update the database schema.
-    run_migrations(db_path, Path(workspace_id))
+    run_migrations(db_path)
 
     # 4. Establish and cache the database connection.
     try:
@@ -399,15 +399,17 @@ def close_all_connections():
 
 # --- Alembic Migration Integration ---
 
-def ensure_alembic_files_exist(workspace_root_dir: Path):
+def ensure_alembic_files_exist(workspace_id: str):
     """
     Ensures that alembic.ini and the alembic/ directory exist within the
-    workspace's context_portal directory. If not, copies them from the
-    server's internal templates.
+    database directory. If not, copies them from the server's internal templates.
     """
     # The actual directory where context.db resides and where Alembic files should be
-    conport_db_dir = workspace_root_dir / "context_portal"
-    conport_db_dir.mkdir(exist_ok=True) # Ensure this directory exists
+    # Get the database path to determine where Alembic files should be located
+    from ..core.config import get_database_path
+    db_path = get_database_path(workspace_id)
+    conport_db_dir = db_path.parent
+    conport_db_dir.mkdir(exist_ok=True, parents=True) # Ensure this directory exists
 
     alembic_ini_path = conport_db_dir / "alembic.ini"
     alembic_dir_path = conport_db_dir / "alembic"
@@ -448,14 +450,15 @@ def ensure_alembic_files_exist(workspace_root_dir: Path):
             log.error(f"Failed to create initial schema at {initial_schema_path}: {e}")
             raise DatabaseError(f"Could not create initial schema: {e}")
 
-def run_migrations(db_path: Path, workspace_root_dir: Path):
+def run_migrations(db_path: Path):
     """
     Runs Alembic migrations to upgrade the database to the latest version.
     This function is called on database connection to ensure schema is up-to-date.
+    Alembic files are expected to be in the same directory as the database file.
     """
     # The directory where alembic.ini and alembic/ scripts are expected to be,
     # which is now the same directory as the database file.
-    alembic_config_and_scripts_dir = workspace_root_dir / "context_portal"
+    alembic_config_and_scripts_dir = db_path.parent
 
     alembic_ini_path = alembic_config_and_scripts_dir / "alembic.ini"
     alembic_scripts_path = alembic_config_and_scripts_dir / "alembic"

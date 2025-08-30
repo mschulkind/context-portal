@@ -16,20 +16,6 @@
 
 <br>
 
-## v0.2.5 (2025-08-29)
-
-### Features
-* **Compact ConPort Strategy for Windsurf:** Added a compact ConPort memory strategy file under 12k characters for Windsurf IDE compatibility, preserving core functionality while reducing size. (Credit: @kundeng, [PR #55](https://github.com/GreatScottyMac/context-portal/pull/55))
-* **Mem4Sprint Strategy and FTS5 Updates:** Introduced mem4sprint strategy with flat categories, FTS5-safe examples, handler-only query normalization, and updated README for better IDE configuration. (Credit: @kundeng, [PR #56](https://github.com/GreatScottyMac/context-portal/pull/56))
-* **CLI Base Path Argument:** Added `--base-path` CLI argument for custom storage locations, enhancing user flexibility. (Credit: @kundeng, [PR #59](https://github.com/GreatScottyMac/context-portal/pull/59))
-
-### Bug Fixes
-* **FTS5 Migration Guard:** Wrapped FTS5 virtual table and trigger creation in try/except to gracefully degrade when unavailable, ensuring portable migrations. (Credit: @kundeng, [PR #53](https://github.com/GreatScottyMac/context-portal/pull/53))
-* **Deferred Workspace Resolution:** Deferred workspace resolution when `${workspaceFolder}` is literal to prevent mis-initialization for various MCP clients. (Credit: @kundeng, [PR #54](https://github.com/GreatScottyMac/context-portal/pull/54))
-* **Workspace ID Resolution Bugfix:** Resolved workspace ID issue for better stability. (Credit: @yy1588133, [PR #49](https://github.com/GreatScottyMac/context-portal/pull/49))
-
-<br>
-
 ## v0.2.22 (2025-07-27)
 
 ### Bug Fixes

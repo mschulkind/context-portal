@@ -291,6 +291,79 @@ If `projectBrief.md` is not found, or if you choose not to import it:
 
 By providing initial context, either through `projectBrief.md` or manual entry, you enable ConPort and the connected LLM agent to have a better foundational understanding of your project from the start.
 
+## Automatic Workspace Detection
+
+ConPort can automatically determine the correct `workspace_id` so you do not need to hardcode an absolute path in your MCP client configuration. This is especially useful for IDEs that fail to expand `${workspaceFolder}` when launching MCP servers.
+
+Detection is enabled by default and can be controlled via CLI flags:
+
+Flags:
+- `--auto-detect-workspace` (default: enabled) Turns on automatic detection.
+- `--no-auto-detect` Disables detection (explicit `--workspace_id` or per-tool `workspace_id` must then be provided).
+- `--workspace-search-start <path>` Optional starting directory for upward search (defaults to current working directory).
+
+How it works (multi‑strategy):
+1. Strong Indicators (fast path): Looks for high-confidence project roots containing any of: `package.json`, `.git`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`.
+2. Multiple General Indicators: If ≥2 general indicators (README, license, build files, etc.) exist in a directory, it is treated as a root.
+3. Existing ConPort Workspace: Presence of a `context_portal/` directory indicates a valid workspace.
+4. MCP Environment Context: Honors environment variables like `VSCODE_WORKSPACE_FOLDER` or `CONPORT_WORKSPACE` when set and valid.
+5. Fallback: If no indicators are found, uses the starting directory verbosely (with a warning).
+
+Tooling:
+- `get_workspace_detection_info` (MCP tool) exposes a diagnostic dictionary showing:
+  - start_path
+  - detected_workspace
+  - detection_method (strong_indicators | multiple_indicators | existing_context_portal | fallback)
+  - indicators_found
+  - relevant environment variables
+
+Best Practices:
+- Keep detection enabled unless you operate multi-root scenarios where explicit isolation per call is required.
+- If an IDE passes the literal string `${workspaceFolder}`, ConPort will ignore it and auto-detect safely (logged at WARNING).
+- For debugging ambiguous roots (e.g., nested repos), run the detection info tool to confirm which directory was selected.
+
+Example MCP launch (relying fully on auto-detect):
+```json
+{
+  "mcpServers": {
+    "conport": {
+      "command": "uvx",
+      "args": [
+        "--from", "context-portal-mcp",
+        "conport-mcp",
+        "--mode", "stdio",
+        "--log-level", "INFO"
+      ]
+    }
+  }
+}
+```
+
+To disable detection explicitly (forcing provided IDs only):
+```json
+{
+  "mcpServers": {
+    "conport": {
+      "command": "uvx",
+      "args": [
+        "--from", "context-portal-mcp",
+        "conport-mcp",
+        "--mode", "stdio",
+        "--no-auto-detect",
+        "--workspace_id", "/absolute/path/to/project"
+      ]
+    }
+  }
+}
+```
+
+If you have a launcher that starts inside a deep subdirectory, provide a higher start path:
+```bash
+conport-mcp --mode stdio --workspace-search-start ../../
+```
+
+See `UNIVERSAL_WORKSPACE_DETECTION.md` for full rationale, edge cases, and troubleshooting.
+
 ## Available ConPort Tools
 
 The ConPort server exposes the following tools via MCP, allowing interaction with the underlying **project knowledge graph**. This includes tools for **semantic search** powered by **vector data storage**. These tools facilitate the **Retrieval** aspect crucial for **Augmented Generation (RAG)** by AI agents. All tools require a `workspace_id` argument (string, required) to specify the target project workspace.

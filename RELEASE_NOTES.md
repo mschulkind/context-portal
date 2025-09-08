@@ -2,6 +2,22 @@
 
 <br>
 
+## v0.3.0 (2025-09-08)
+
+### Features
+* **Universal Workspace Auto-Detection:** Integrated multi-strategy workspace discovery (strong indicators, multiple indicators, existing `context_portal/`, environment variables, fallback). Eliminates need to hardcode `--workspace_id` in most MCP client configs. Includes new CLI flags: `--auto-detect-workspace` (default enabled), `--no-auto-detect`, and `--workspace-search-start <path>`.
+* **Diagnostic Tool:** Added `get_workspace_detection_info` MCP tool to expose detection details for debugging ambiguous setups.
+* **Graceful `${workspaceFolder}` Handling:** If an IDE passes the literal `${workspaceFolder}`, the server now warns and safely auto-detects instead of initializing incorrectly.
+* **Documentation:** Added `UNIVERSAL_WORKSPACE_DETECTION.md` plus README section “Automatic Workspace Detection” with usage guidance and examples.
+
+### Notes
+This release supersedes the stalled external contribution (original PR #60). Attribution preserved in commit metadata. Users are encouraged to remove hardcoded absolute paths where safe.
+
+### Upgrade Guidance
+No migration steps required. Existing workflows with explicit `--workspace_id` continue to function. To leverage auto-detection, you may remove the flag (or allow per-call workspace_id injection).
+
+<br>
+
 ## v0.2.23 (2025-08-30)
 
 ### Features

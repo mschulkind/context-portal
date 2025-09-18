@@ -2,7 +2,7 @@
 
 <br>
 
-## v0.3.1 (2025-09-18)
+## v0.3.2 (2025-09-18)
 
 ### Fixes & Improvements
 - Timezone-aware datetimes: replaced naive UTC usage with aware UTC across models and DB code, and registered SQLite adapters/converters for reliable UTC round-tripping. Files: [src/context_portal_mcp/db/models.py](src/context_portal_mcp/db/models.py), [src/context_portal_mcp/db/database.py](src/context_portal_mcp/db/database.py).

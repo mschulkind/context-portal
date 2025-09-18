@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from alembic.config import Config
 from alembic import command
@@ -18,6 +18,29 @@ import shutil # For copying directories
 import inspect
 
 log = logging.getLogger(__name__) # Get a logger for this module
+
+# --- SQLite datetime adapters/converters (UTC) ---
+def _adapt_datetime(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat(timespec="seconds")
+
+def _convert_datetime(b: bytes) -> datetime:
+    s = b.decode()
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        # Fallback for SQLite CURRENT_TIMESTAMP format 'YYYY-MM-DD HH:MM:SS'
+        dt = datetime.fromisoformat(s.replace(" ", "T"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+sqlite3.register_adapter(datetime, _adapt_datetime)
+sqlite3.register_converter("DATETIME", _convert_datetime)
+sqlite3.register_converter("TIMESTAMP", _convert_datetime)
 
 # --- Alembic File Content Constants ---
 
@@ -526,7 +549,7 @@ def _add_context_history_entry(
 ) -> None:
     """Adds an entry to the specified context history table."""
     content_json = json.dumps(content_dict)
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(timezone.utc)
     try:
         cursor.execute(
             f"""
@@ -1547,7 +1570,7 @@ limit_per_type: int = 5
         "notes": []
     }
 
-    now_utc = datetime.utcnow()
+    now_utc = datetime.now(timezone.utc)
     summary_results["summary_period_end"] = now_utc.isoformat()
 
     if since_timestamp:

@@ -368,6 +368,8 @@ See `UNIVERSAL_WORKSPACE_DETECTION.md` for full rationale, edge cases, and troub
 
 The ConPort server exposes the following tools via MCP, allowing interaction with the underlying **project knowledge graph**. This includes tools for **semantic search** powered by **vector data storage**. These tools facilitate the **Retrieval** aspect crucial for **Augmented Generation (RAG)** by AI agents. All tools require a `workspace_id` argument (string, required) to specify the target project workspace.
 
+Note: For convenience, all integer-like parameters accept either numbers or digit-only strings (e.g., "10", " 3"). The server trims whitespace and coerces these to integers while preserving validation bounds (e.g., ge=1). Credit: @cipradu.
+
 - **Product Context Management:**
   - `get_product_context`: Retrieves the overall project goals, features, and architecture.
   - `update_product_context`: Updates the product context. Accepts full `content` (object) or `patch_content` (object) for partial updates (use `__DELETE__` as a value in patch to remove a key).

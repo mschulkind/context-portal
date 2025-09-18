@@ -119,6 +119,8 @@ Pydantic models defined in `src/context_portal_mcp/db/models.py` mirror these ta
 
 The ConPort server exposes the following MCP tools. These tools allow AI agents to interact with and build upon the **project knowledge graph**, and to retrieve specific information crucial for **Retrieval Augmented Generation (RAG)**. All tools require a `workspace_id` argument, which is an identifier for the workspace (e.g., absolute path) to ensure data operations are performed in the correct context.
 
+Note: Integer-like parameters across tools accept numbers or digit-only strings (whitespace allowed). Inputs like "10" or " 2" are trimmed and coerced to integers, and existing bounds (e.g., ge=1) still apply.
+
 ### 3.1 Product Context Tools
 
 #### 3.1.1 `get_product_context`

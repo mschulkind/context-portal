@@ -2,6 +2,15 @@
 
 <br>
 
+## v0.3.1 (2025-09-18)
+
+### Fixes & Improvements
+- Timezone-aware datetimes: replaced naive UTC usage with aware UTC across models and DB code, and registered SQLite adapters/converters for reliable UTC round-tripping. Files: [src/context_portal_mcp/db/models.py](src/context_portal_mcp/db/models.py), [src/context_portal_mcp/db/database.py](src/context_portal_mcp/db/database.py).
+- Integer-like string inputs: added lenient parsing that coerces digit-only strings to integers before validation in relevant argument models. Credit: @cipradu.
+- Dependency security: addressed Starlette advisory GHSA-2c2j-9gv5-cj73 by upgrading FastAPI to 0.116.2 and constraining Starlette to >=0.47.2,<0.49.0; verified via pip-audit: "No known vulnerabilities found."
+
+<br>
+
 ## v0.3.0 (2025-09-08)
 
 ### Features

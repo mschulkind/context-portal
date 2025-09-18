@@ -1,8 +1,8 @@
 """Pydantic models for data validation and structure, mirroring the database schema."""
 
 from pydantic import BaseModel, Field, Json, model_validator
-from typing import Optional, Dict, Any, List, Annotated
-from datetime import datetime
+from typing import Optional, Dict, Any, List, Annotated, ClassVar, Set
+from datetime import datetime, timezone
 
 # --- Base Models ---
 
@@ -24,7 +24,7 @@ class ActiveContext(BaseContextModel):
 class Decision(BaseModel):
     """Model for the decisions table."""
     id: Optional[int] = None # Auto-incremented by DB
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     summary: str
     rationale: Optional[str] = None
     implementation_details: Optional[str] = None
@@ -33,7 +33,7 @@ class Decision(BaseModel):
 class ProgressEntry(BaseModel):
     """Model for the progress_entries table."""
     id: Optional[int] = None # Auto-incremented by DB
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str # e.g., 'TODO', 'IN_PROGRESS', 'DONE'
     description: str
     parent_id: Optional[int] = None # For subtasks
@@ -41,7 +41,7 @@ class ProgressEntry(BaseModel):
 class SystemPattern(BaseModel):
     """Model for the system_patterns table."""
     id: Optional[int] = None # Auto-incremented by DB
-    timestamp: datetime = Field(default_factory=datetime.utcnow) # Added timestamp
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc)) # Added timestamp
     name: str # Should be unique
     description: Optional[str] = None
     tags: Optional[List[str]] = Field(None, description="Optional tags for categorization")
@@ -49,7 +49,7 @@ class SystemPattern(BaseModel):
 class CustomData(BaseModel):
     """Model for the custom_data table."""
     id: Optional[int] = None # Auto-incremented by DB
-    timestamp: datetime = Field(default_factory=datetime.utcnow) # Added timestamp
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc)) # Added timestamp
     category: str
     key: str
     value: Any # Store arbitrary JSON data (SQLAlchemy handles JSON str conversion for DB)
@@ -59,7 +59,7 @@ class CustomData(BaseModel):
 class ProductContextHistory(BaseModel):
     """Model for the product_context_history table."""
     id: Optional[int] = None # Auto-incremented by DB
-    timestamp: datetime = Field(default_factory=datetime.utcnow) # When this history record was created
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc)) # When this history record was created
     version: int # Version number for this context, incremented on each change
     content: Dict[str, Any] # The content of ProductContext at this version
     change_source: Optional[str] = Field(None, description="Brief description of what triggered the change, e.g., tool name or user action")
@@ -67,7 +67,7 @@ class ProductContextHistory(BaseModel):
 class ActiveContextHistory(BaseModel):
     """Model for the active_context_history table."""
     id: Optional[int] = None # Auto-incremented by DB
-    timestamp: datetime = Field(default_factory=datetime.utcnow) # When this history record was created
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc)) # When this history record was created
     version: int # Version number for this context, incremented on each change
     content: Dict[str, Any] # The content of ActiveContext at this version
     change_source: Optional[str] = Field(None, description="Brief description of what triggered the change, e.g., tool name or user action")
@@ -77,6 +77,29 @@ class ActiveContextHistory(BaseModel):
 class BaseArgs(BaseModel):
     """Base model for arguments requiring a workspace ID."""
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")]
+
+class IntCoercionMixin(BaseModel):
+    """Mixin to coerce digit-only string inputs to integers for specified INT_FIELDS."""
+    INT_FIELDS: ClassVar[Set[str]] = set()
+
+    @model_validator(mode='before')
+    @classmethod
+    def _coerce_int_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(values, dict):
+            return values
+        int_fields = getattr(cls, "INT_FIELDS", set())
+        if not int_fields:
+            return values
+        for field_name in int_fields:
+            if field_name in values and values[field_name] is not None:
+                v = values[field_name]
+                if isinstance(v, int):
+                    continue
+                if isinstance(v, str):
+                    s = v.strip()
+                    if s.isdigit():
+                        values[field_name] = int(s)
+        return values
 
 # --- Context Tools ---
 
@@ -110,8 +133,9 @@ class LogDecisionArgs(BaseArgs):
     implementation_details: Optional[str] = Field(None, description="Details about how the decision will be/was implemented")
     tags: Optional[List[str]] = Field(None, description="Optional tags for categorization")
 
-class GetDecisionsArgs(BaseArgs):
+class GetDecisionsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving decisions."""
+    INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     limit: Optional[int] = Field(None, ge=1, description="Maximum number of decisions to return (most recent first)")
     tags_filter_include_all: Optional[List[str]] = Field(None, description="Filter: items must include ALL of these tags.")
     tags_filter_include_any: Optional[List[str]] = Field(None, description="Filter: items must include AT LEAST ONE of these tags.")
@@ -123,19 +147,22 @@ class GetDecisionsArgs(BaseArgs):
             raise ValueError("Cannot use 'tags_filter_include_all' and 'tags_filter_include_any' simultaneously.")
         return values
 
-class SearchDecisionsArgs(BaseArgs):
+class SearchDecisionsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for searching decisions using FTS."""
+    INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     query_term: str = Field(..., min_length=1, description="The term to search for in decisions.")
     limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
 
-class DeleteDecisionByIdArgs(BaseArgs):
+class DeleteDecisionByIdArgs(IntCoercionMixin, BaseArgs):
     """Arguments for deleting a decision by its ID."""
+    INT_FIELDS: ClassVar[Set[str]] = {"decision_id"}
     decision_id: int = Field(..., ge=1, description="The ID of the decision to delete.")
 
 # --- Progress Tools ---
 
-class LogProgressArgs(BaseArgs):
+class LogProgressArgs(IntCoercionMixin, BaseArgs):
     """Arguments for logging a progress entry."""
+    INT_FIELDS: ClassVar[Set[str]] = {"parent_id"}
     status: str = Field(..., description="Current status (e.g., 'TODO', 'IN_PROGRESS', 'DONE')")
     description: str = Field(..., min_length=1, description="Description of the progress or task")
     parent_id: Optional[int] = Field(None, description="ID of the parent task, if this is a subtask")
@@ -154,15 +181,17 @@ class LogProgressArgs(BaseArgs):
             raise ValueError("Both 'linked_item_type' and 'linked_item_id' must be provided together, or neither.")
         return values
 
-class GetProgressArgs(BaseArgs):
+class GetProgressArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving progress entries."""
+    INT_FIELDS: ClassVar[Set[str]] = {"parent_id_filter", "limit"}
     status_filter: Optional[str] = Field(None, description="Filter entries by status")
     parent_id_filter: Optional[int] = Field(None, description="Filter entries by parent task ID")
     limit: Optional[int] = Field(None, ge=1, description="Maximum number of entries to return (most recent first)")
 
 # New model for updating a progress entry
-class UpdateProgressArgs(BaseArgs):
+class UpdateProgressArgs(IntCoercionMixin, BaseArgs):
     """Arguments for updating an existing progress entry."""
+    INT_FIELDS: ClassVar[Set[str]] = {"progress_id", "parent_id"}
     progress_id: int = Field(..., ge=1, description="The ID of the progress entry to update.")
     status: Optional[str] = Field(None, description="New status (e.g., 'TODO', 'IN_PROGRESS', 'DONE')")
     description: Optional[str] = Field(None, min_length=1, description="New description of the progress or task")
@@ -177,8 +206,9 @@ class UpdateProgressArgs(BaseArgs):
         return values
 
 # New model for deleting a progress entry by ID
-class DeleteProgressByIdArgs(BaseArgs):
+class DeleteProgressByIdArgs(IntCoercionMixin, BaseArgs):
     """Arguments for deleting a progress entry by its ID."""
+    INT_FIELDS: ClassVar[Set[str]] = {"progress_id"}
     progress_id: int = Field(..., ge=1, description="The ID of the progress entry to delete.")
 
 # --- System Pattern Tools ---
@@ -189,8 +219,9 @@ class LogSystemPatternArgs(BaseArgs):
     description: Optional[str] = Field(None, description="Description of the pattern")
     tags: Optional[List[str]] = Field(None, description="Optional tags for categorization")
 
-class GetSystemPatternsArgs(BaseArgs):
+class GetSystemPatternsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving system patterns."""
+    INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     limit: Optional[int] = Field(None, ge=1, description="Maximum number of patterns to return (most recent first)")
     tags_filter_include_all: Optional[List[str]] = Field(None, description="Filter: items must include ALL of these tags.")
     tags_filter_include_any: Optional[List[str]] = Field(None, description="Filter: items must include AT LEAST ONE of these tags.")
@@ -202,8 +233,9 @@ class GetSystemPatternsArgs(BaseArgs):
             raise ValueError("Cannot use 'tags_filter_include_all' and 'tags_filter_include_any' simultaneously.")
         return values
 
-class DeleteSystemPatternByIdArgs(BaseArgs):
+class DeleteSystemPatternByIdArgs(IntCoercionMixin, BaseArgs):
     """Arguments for deleting a system pattern by its ID."""
+    INT_FIELDS: ClassVar[Set[str]] = {"pattern_id"}
     pattern_id: int = Field(..., ge=1, description="The ID of the system pattern to delete.")
 
 # --- Custom Data Tools ---
@@ -224,14 +256,16 @@ class DeleteCustomDataArgs(BaseArgs):
     category: str = Field(..., min_length=1, description="Category of the data to delete")
     key: str = Field(..., min_length=1, description="Key of the data to delete")
 
-class SearchCustomDataValueArgs(BaseArgs):
+class SearchCustomDataValueArgs(IntCoercionMixin, BaseArgs):
     """Arguments for searching custom data values using FTS."""
+    INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     query_term: str = Field(..., min_length=1, description="The term to search for in custom data (category, key, or value).")
     category_filter: Optional[str] = Field(None, description="Optional: Filter results to this category after FTS.")
     limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
 
-class SearchProjectGlossaryArgs(BaseArgs):
+class SearchProjectGlossaryArgs(IntCoercionMixin, BaseArgs):
     """Arguments for searching the ProjectGlossary using FTS."""
+    INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     query_term: str = Field(..., min_length=1, description="The term to search for in the glossary.")
     limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
 
@@ -252,7 +286,7 @@ class ImportMarkdownToConportArgs(BaseArgs):
 class ContextLink(BaseModel):
     """Model for the context_links table."""
     id: Optional[int] = None # Auto-incremented by DB
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source_item_type: str = Field(..., description="Type of the source item (e.g., 'decision', 'progress_entry')")
     source_item_id: str = Field(..., description="ID or key of the source item") # Using str to accommodate string keys from custom_data etc.
     target_item_type: str = Field(..., description="Type of the target item")
@@ -269,8 +303,9 @@ class LinkConportItemsArgs(BaseArgs):
     relationship_type: str = Field(..., description="Nature of the link")
     description: Optional[str] = Field(None, description="Optional description for the link")
 
-class GetLinkedItemsArgs(BaseArgs):
+class GetLinkedItemsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving links for a ConPort item."""
+    INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     item_type: str = Field(..., description="Type of the item to find links for (e.g., 'decision')")
     item_id: str = Field(..., description="ID or key of the item to find links for")
     relationship_type_filter: Optional[str] = Field(None, description="Optional: Filter by relationship type")
@@ -288,8 +323,9 @@ class BatchLogItemsArgs(BaseArgs):
 
 # --- Context History Tool Args ---
 
-class GetItemHistoryArgs(BaseArgs):
+class GetItemHistoryArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving history of a context item."""
+    INT_FIELDS: ClassVar[Set[str]] = {"limit", "version"}
     item_type: str = Field(..., description="Type of the item: 'product_context' or 'active_context'")
     limit: Optional[int] = Field(None, ge=1, description="Maximum number of history entries to return (most recent first)")
     before_timestamp: Optional[datetime] = Field(None, description="Return entries before this timestamp")
@@ -312,8 +348,9 @@ class GetConportSchemaArgs(BaseArgs):
 
 # --- Recent Activity Summary Tool Args ---
 
-class GetRecentActivitySummaryArgs(BaseArgs):
+class GetRecentActivitySummaryArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving a summary of recent ConPort activity."""
+    INT_FIELDS: ClassVar[Set[str]] = {"hours_ago", "limit_per_type"}
     hours_ago: Optional[int] = Field(None, ge=1, description="Look back this many hours for recent activity. Mutually exclusive with 'since_timestamp'.")
     since_timestamp: Optional[datetime] = Field(None, description="Look back for activity since this specific timestamp. Mutually exclusive with 'hours_ago'.")
     limit_per_type: Optional[int] = Field(5, ge=1, description="Maximum number of recent items to show per activity type (e.g., 5 most recent decisions).")
@@ -332,8 +369,9 @@ class GetRecentActivitySummaryArgs(BaseArgs):
 
 # --- Semantic Search Tool Args ---
 
-class SemanticSearchConportArgs(BaseArgs):
+class SemanticSearchConportArgs(IntCoercionMixin, BaseArgs):
     """Arguments for performing a semantic search across ConPort data."""
+    INT_FIELDS: ClassVar[Set[str]] = {"top_k"}
     query_text: str = Field(..., min_length=1, description="The natural language query text for semantic search.")
     top_k: int = Field(default=5, ge=1, le=25, description="Number of top results to return.") # Max 25 for now
     filter_item_types: Optional[List[str]] = Field(default=None, description="Optional list of item types to filter by (e.g., ['decision', 'custom_data']). Valid types: 'decision', 'system_pattern', 'custom_data', 'progress_entry'.")

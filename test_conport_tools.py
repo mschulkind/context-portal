@@ -1,74 +1,99 @@
 import os
+import sys
 import json
-import subprocess
 
-def run_mcp_tool(server_name, tool_name, arguments):
-    """Helper function to run an MCP tool via CLI."""
-    args_json = json.dumps(arguments)
-    command = [
-        "mcp", "use", f"{server_name}/{tool_name}",
-        "--args", args_json
-    ]
-    print(f"Running command: {' '.join(command)}")
-    result = subprocess.run(command, capture_output=True, text=True, shell=True)
-    if result.returncode != 0:
-        print(f"Error running tool {tool_name}:")
-        print(result.stderr)
-        return None
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+SRC_PATH = os.path.join(REPO_ROOT, "src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from context_portal_mcp.db import models
+from context_portal_mcp.handlers import mcp_handlers as H
+
+
+def as_json(obj):
     try:
-        return json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print(f"Error decoding JSON from tool {tool_name}:")
-        print(result.stdout)
-        return None
+        return json.dumps(obj, indent=2, default=str)
+    except TypeError:
+        try:
+            return json.dumps(obj.model_dump(mode="json"), indent=2, default=str)
+        except Exception:
+            return str(obj)
+
+
+def get_id(obj):
+    if isinstance(obj, dict):
+        return obj.get("id")
+    return getattr(obj, "id", None)
+
 
 def main():
-    """Main function to test all conport MCP tools."""
     workspace_id = os.getcwd()
-    server_name = "conport"
+    print(f"Workspace: {workspace_id}")
 
-    print("--- Testing Product Context ---")
-    run_mcp_tool(server_name, "update_product_context", {"workspace_id": workspace_id, "content": {"goal": "Test all the things!"}})
-    product_context = run_mcp_tool(server_name, "get_product_context", {"workspace_id": workspace_id})
-    print(f"Product Context: {product_context}")
+    print("--- Product Context ---")
+    H.handle_update_product_context(models.UpdateContextArgs(workspace_id=workspace_id, content={"goal": "Test all the things!"}))
+    pc = H.handle_get_product_context(models.GetContextArgs(workspace_id=workspace_id))
+    print(as_json(pc))
 
-    print("\n--- Testing Active Context ---")
-    run_mcp_tool(server_name, "update_active_context", {"workspace_id": workspace_id, "content": {"focus": "Running test script."}})
-    active_context = run_mcp_tool(server_name, "get_active_context", {"workspace_id": workspace_id})
-    print(f"Active Context: {active_context}")
+    print("\n--- Active Context ---")
+    H.handle_update_active_context(models.UpdateContextArgs(workspace_id=workspace_id, content={"focus": "Running test script."}))
+    ac = H.handle_get_active_context(models.GetContextArgs(workspace_id=workspace_id))
+    print(as_json(ac))
 
-    print("\n--- Testing Decision Logging ---")
-    decision = run_mcp_tool(server_name, "log_decision", {"workspace_id": workspace_id, "summary": "Script test decision", "rationale": "Automated test.", "tags": ["script", "test"]})
-    decisions = run_mcp_tool(server_name, "get_decisions", {"workspace_id": workspace_id, "limit": 1})
-    print(f"Logged Decision: {decisions}")
+    print("\n--- Decision Logging ---")
+    dec = H.handle_log_decision(models.LogDecisionArgs(workspace_id=workspace_id, summary="Script test decision", rationale="Automated test.", tags=["script", "test"]))
+    decs = H.handle_get_decisions(models.GetDecisionsArgs(workspace_id=workspace_id, limit="1"))
+    print(as_json(decs))
 
-    print("\n--- Testing Progress Logging ---")
-    progress = run_mcp_tool(server_name, "log_progress", {"workspace_id": workspace_id, "status": "IN_PROGRESS", "description": "Running script tests"})
-    progress_entries = run_mcp_tool(server_name, "get_progress", {"workspace_id": workspace_id, "limit": 1})
-    print(f"Logged Progress: {progress_entries}")
+    print("\n--- Progress Logging ---")
+    prog = H.handle_log_progress(models.LogProgressArgs(workspace_id=workspace_id, status="IN_PROGRESS", description="Running script tests"))
+    progs = H.handle_get_progress(models.GetProgressArgs(workspace_id=workspace_id, limit="1"))
+    print(as_json(progs))
 
-    print("\n--- Testing System Pattern Logging ---")
-    pattern = run_mcp_tool(server_name, "log_system_pattern", {"workspace_id": workspace_id, "name": "Test Script Pattern", "description": "A pattern for testing.", "tags": ["script"]})
-    patterns = run_mcp_tool(server_name, "get_system_patterns", {"workspace_id": workspace_id})
-    print(f"Logged Patterns: {patterns}")
+    print("\n--- System Pattern Logging ---")
+    patt = H.handle_log_system_pattern(models.LogSystemPatternArgs(workspace_id=workspace_id, name="Test Script Pattern", description="A pattern for testing.", tags=["script"]))
+    patts = H.handle_get_system_patterns(models.GetSystemPatternsArgs(workspace_id=workspace_id, limit="1"))
+    print(as_json(patts))
 
-    print("\n--- Testing Custom Data Logging ---")
-    custom_data = run_mcp_tool(server_name, "log_custom_data", {"workspace_id": workspace_id, "category": "TestScript", "key": "Run1", "value": {"status": "success"}})
-    custom_data_entries = run_mcp_tool(server_name, "get_custom_data", {"workspace_id": workspace_id, "category": "TestScript"})
-    print(f"Logged Custom Data: {custom_data_entries}")
+    print("\n--- Custom Data Logging ---")
+    H.handle_log_custom_data(models.LogCustomDataArgs(workspace_id=workspace_id, category="TestScript", key="Run1", value={"status": "success"}))
+    cdata = H.handle_get_custom_data(models.GetCustomDataArgs(workspace_id=workspace_id, category="TestScript"))
+    print(as_json(cdata))
 
-    print("\n--- Testing Linking ---")
-    link = run_mcp_tool(server_name, "link_conport_items", {"workspace_id": workspace_id, "source_item_type": "decision", "source_item_id": str(decision['id']), "target_item_type": "progress_entry", "target_item_id": str(progress['id']), "relationship_type": "tested_by"})
-    links = run_mcp_tool(server_name, "get_linked_items", {"workspace_id": workspace_id, "item_type": "decision", "item_id": str(decision['id'])})
-    print(f"Links for decision: {links}")
+    print("\n--- Linking ---")
+    dec_id = get_id(dec if dec else (decs[0] if isinstance(decs, list) and decs else None))
+    prog_id = get_id(prog if prog else (progs[0] if isinstance(progs, list) and progs else None))
+    if dec_id is not None and prog_id is not None:
+        link = H.handle_link_conport_items(models.LinkConportItemsArgs(
+            workspace_id=workspace_id,
+            source_item_type="decision",
+            source_item_id=str(dec_id),
+            target_item_type="progress_entry",
+            target_item_id=str(prog_id),
+            relationship_type="tested_by"
+        ))
+        links = H.handle_get_linked_items(models.GetLinkedItemsArgs(workspace_id=workspace_id, item_type="decision", item_id=str(dec_id)))
+        print(as_json(links))
+    else:
+        print("Skipping linking due to missing IDs")
 
-    print("\n--- Testing FTS ---")
-    fts_results = run_mcp_tool(server_name, "search_decisions_fts", {"workspace_id": workspace_id, "query_term": "script"})
-    print(f"FTS Results: {fts_results}")
+    print("\n--- FTS ---")
+    fts = H.handle_search_decisions_fts(models.SearchDecisionsArgs(workspace_id=workspace_id, query_term="script", limit="2"))
+    print(as_json(fts))
 
-    print("\n--- Testing Export ---")
-    export_result = run_mcp_tool(server_name, "export_conport_to_markdown", {"workspace_id": workspace_id})
-    print(f"Export Result: {export_result}")
+    print("\n--- Project Glossary FTS ---")
+    glossary = H.handle_search_project_glossary_fts(models.SearchProjectGlossaryArgs(workspace_id=workspace_id, query_term="script", limit=" 5 "))
+    print(as_json(glossary))
+
+    print("\n--- Recent Activity Summary ---")
+    ras = H.handle_get_recent_activity_summary(models.GetRecentActivitySummaryArgs(workspace_id=workspace_id, hours_ago="24", limit_per_type="3"))
+    print(as_json(ras))
+
+    print("\n--- Export ---")
+    export = H.handle_export_conport_to_markdown(models.ExportConportToMarkdownArgs(workspace_id=workspace_id))
+    print(as_json(export))
+
 
 if __name__ == "__main__":
     main()

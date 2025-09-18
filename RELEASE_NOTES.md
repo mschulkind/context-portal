@@ -2,9 +2,17 @@
 
 <br>
 
-## v0.3.2 (2025-09-18)
+## Unreleased
 
 ### Fixes & Improvements
+-
+
+<br>
+
+## v0.3.3 (2025-09-18)
+
+### Fixes & Improvements
+- **Pydantic Validation Fix:** Corrected an issue where Pydantic's `ge=1` constraint was being applied before the `IntCoercionMixin` could convert string-based integers, causing validation errors. The fix ensures that string-to-integer coercion happens before validation, allowing for more flexible input.
 - Timezone-aware datetimes: replaced naive UTC usage with aware UTC across models and DB code, and registered SQLite adapters/converters for reliable UTC round-tripping. Files: [src/context_portal_mcp/db/models.py](src/context_portal_mcp/db/models.py), [src/context_portal_mcp/db/database.py](src/context_portal_mcp/db/database.py).
 - Integer-like string inputs: added lenient parsing that coerces digit-only strings to integers before validation in relevant argument models. Credit: @cipradu.
 - Dependency security: addressed Starlette advisory GHSA-2c2j-9gv5-cj73 by upgrading FastAPI to 0.116.2 and constraining Starlette to >=0.47.2,<0.49.0; verified via pip-audit: "No known vulnerabilities found."

@@ -136,7 +136,7 @@ class LogDecisionArgs(BaseArgs):
 class GetDecisionsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving decisions."""
     INT_FIELDS: ClassVar[Set[str]] = {"limit"}
-    limit: Optional[int] = Field(None, ge=1, description="Maximum number of decisions to return (most recent first)")
+    limit: Optional[int] = Field(None, description="Maximum number of decisions to return (most recent first)")
     tags_filter_include_all: Optional[List[str]] = Field(None, description="Filter: items must include ALL of these tags.")
     tags_filter_include_any: Optional[List[str]] = Field(None, description="Filter: items must include AT LEAST ONE of these tags.")
 
@@ -146,6 +146,12 @@ class GetDecisionsArgs(IntCoercionMixin, BaseArgs):
         if values.get('tags_filter_include_all') and values.get('tags_filter_include_any'):
             raise ValueError("Cannot use 'tags_filter_include_all' and 'tags_filter_include_any' simultaneously.")
         return values
+
+    @model_validator(mode='after')
+    def check_limit(self) -> 'GetDecisionsArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        return self
 
 class SearchDecisionsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for searching decisions using FTS."""
@@ -213,8 +219,9 @@ class DeleteProgressByIdArgs(IntCoercionMixin, BaseArgs):
 
 # --- System Pattern Tools ---
 
-class LogSystemPatternArgs(BaseArgs):
+class LogSystemPatternArgs(IntCoercionMixin, BaseArgs):
     """Arguments for logging a system pattern."""
+    INT_FIELDS: ClassVar[Set[str]] = set()
     name: str = Field(..., min_length=1, description="Unique name for the system pattern")
     description: Optional[str] = Field(None, description="Description of the pattern")
     tags: Optional[List[str]] = Field(None, description="Optional tags for categorization")

@@ -445,6 +445,10 @@ Please see our [CONTRIBUTING.md](CONTRIBUTING.md) guide for details on how to co
  This project is licensed under the [Apache-2.0 license](LICENSE).
   
  
+## Acknowledgments
+
+- Special thanks to **@cipradu** for the valuable suggestion to implement integer-string coercion for numeric arguments, which improves the user experience when interacting with the MCP server from various clients.
+
 ## Database Migration & Update Guide
  
 For detailed instructions on how to manage your `context.db` file, especially when updating ConPort across versions that include database schema changes, please refer to the dedicated [v0.2.4_UPDATE_GUIDE.md](v0.2.4_UPDATE_GUIDE.md). This guide provides steps for manual data migration (export/import) if needed, and troubleshooting tips.

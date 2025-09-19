@@ -2,13 +2,6 @@
 
 <br>
 
-## Unreleased
-
-### Fixes & Improvements
--
-
-<br>
-
 ## v0.3.3 (2025-09-18)
 
 ### Fixes & Improvements

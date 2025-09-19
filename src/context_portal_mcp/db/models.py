@@ -157,12 +157,24 @@ class SearchDecisionsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for searching decisions using FTS."""
     INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     query_term: str = Field(..., min_length=1, description="The term to search for in decisions.")
-    limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
+    limit: Optional[int] = Field(10, description="Maximum number of search results to return.")
+
+    @model_validator(mode='after')
+    def check_limit(self) -> 'SearchDecisionsArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        return self
 
 class DeleteDecisionByIdArgs(IntCoercionMixin, BaseArgs):
     """Arguments for deleting a decision by its ID."""
     INT_FIELDS: ClassVar[Set[str]] = {"decision_id"}
-    decision_id: int = Field(..., ge=1, description="The ID of the decision to delete.")
+    decision_id: int = Field(..., description="The ID of the decision to delete.")
+
+    @model_validator(mode='after')
+    def check_id(self) -> 'DeleteDecisionByIdArgs':
+        if self.decision_id < 1:
+            raise ValueError("decision_id must be greater than or equal to 1")
+        return self
 
 # --- Progress Tools ---
 
@@ -174,7 +186,6 @@ class LogProgressArgs(IntCoercionMixin, BaseArgs):
     parent_id: Optional[int] = Field(None, description="ID of the parent task, if this is a subtask")
     linked_item_type: Optional[str] = Field(None, description="Optional: Type of the ConPort item this progress entry is linked to (e.g., 'decision', 'system_pattern')")
     linked_item_id: Optional[str] = Field(None, description="Optional: ID/key of the ConPort item this progress entry is linked to (requires linked_item_type)")
-    # Default relationship type for progress links, can be made configurable if needed
     link_relationship_type: str = Field("relates_to_progress", description="Relationship type for the automatic link, defaults to 'relates_to_progress'")
 
 
@@ -192,16 +203,21 @@ class GetProgressArgs(IntCoercionMixin, BaseArgs):
     INT_FIELDS: ClassVar[Set[str]] = {"parent_id_filter", "limit"}
     status_filter: Optional[str] = Field(None, description="Filter entries by status")
     parent_id_filter: Optional[int] = Field(None, description="Filter entries by parent task ID")
-    limit: Optional[int] = Field(None, ge=1, description="Maximum number of entries to return (most recent first)")
+    limit: Optional[int] = Field(None, description="Maximum number of entries to return (most recent first)")
 
-# New model for updating a progress entry
+    @model_validator(mode='after')
+    def check_limit(self) -> 'GetProgressArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        return self
+
 class UpdateProgressArgs(IntCoercionMixin, BaseArgs):
     """Arguments for updating an existing progress entry."""
     INT_FIELDS: ClassVar[Set[str]] = {"progress_id", "parent_id"}
-    progress_id: int = Field(..., ge=1, description="The ID of the progress entry to update.")
+    progress_id: int = Field(..., description="The ID of the progress entry to update.")
     status: Optional[str] = Field(None, description="New status (e.g., 'TODO', 'IN_PROGRESS', 'DONE')")
     description: Optional[str] = Field(None, min_length=1, description="New description of the progress or task")
-    parent_id: Optional[int] = Field(None, description="New ID of the parent task, if changing") # Note: Setting to None might mean clearing parent
+    parent_id: Optional[int] = Field(None, description="New ID of the parent task, if changing")
 
     @model_validator(mode='before')
     @classmethod
@@ -211,11 +227,22 @@ class UpdateProgressArgs(IntCoercionMixin, BaseArgs):
             raise ValueError("At least one field ('status', 'description', or 'parent_id') must be provided for update.")
         return values
 
-# New model for deleting a progress entry by ID
+    @model_validator(mode='after')
+    def check_id(self) -> 'UpdateProgressArgs':
+        if self.progress_id < 1:
+            raise ValueError("progress_id must be greater than or equal to 1")
+        return self
+
 class DeleteProgressByIdArgs(IntCoercionMixin, BaseArgs):
     """Arguments for deleting a progress entry by its ID."""
     INT_FIELDS: ClassVar[Set[str]] = {"progress_id"}
-    progress_id: int = Field(..., ge=1, description="The ID of the progress entry to delete.")
+    progress_id: int = Field(..., description="The ID of the progress entry to delete.")
+
+    @model_validator(mode='after')
+    def check_id(self) -> 'DeleteProgressByIdArgs':
+        if self.progress_id < 1:
+            raise ValueError("progress_id must be greater than or equal to 1")
+        return self
 
 # --- System Pattern Tools ---
 
@@ -229,7 +256,7 @@ class LogSystemPatternArgs(IntCoercionMixin, BaseArgs):
 class GetSystemPatternsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving system patterns."""
     INT_FIELDS: ClassVar[Set[str]] = {"limit"}
-    limit: Optional[int] = Field(None, ge=1, description="Maximum number of patterns to return (most recent first)")
+    limit: Optional[int] = Field(None, description="Maximum number of patterns to return (most recent first)")
     tags_filter_include_all: Optional[List[str]] = Field(None, description="Filter: items must include ALL of these tags.")
     tags_filter_include_any: Optional[List[str]] = Field(None, description="Filter: items must include AT LEAST ONE of these tags.")
 
@@ -240,10 +267,22 @@ class GetSystemPatternsArgs(IntCoercionMixin, BaseArgs):
             raise ValueError("Cannot use 'tags_filter_include_all' and 'tags_filter_include_any' simultaneously.")
         return values
 
+    @model_validator(mode='after')
+    def check_limit(self) -> 'GetSystemPatternsArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        return self
+
 class DeleteSystemPatternByIdArgs(IntCoercionMixin, BaseArgs):
     """Arguments for deleting a system pattern by its ID."""
     INT_FIELDS: ClassVar[Set[str]] = {"pattern_id"}
-    pattern_id: int = Field(..., ge=1, description="The ID of the system pattern to delete.")
+    pattern_id: int = Field(..., description="The ID of the system pattern to delete.")
+
+    @model_validator(mode='after')
+    def check_id(self) -> 'DeleteSystemPatternByIdArgs':
+        if self.pattern_id < 1:
+            raise ValueError("pattern_id must be greater than or equal to 1")
+        return self
 
 # --- Custom Data Tools ---
 
@@ -268,13 +307,25 @@ class SearchCustomDataValueArgs(IntCoercionMixin, BaseArgs):
     INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     query_term: str = Field(..., min_length=1, description="The term to search for in custom data (category, key, or value).")
     category_filter: Optional[str] = Field(None, description="Optional: Filter results to this category after FTS.")
-    limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
+    limit: Optional[int] = Field(10, description="Maximum number of search results to return.")
+
+    @model_validator(mode='after')
+    def check_limit(self) -> 'SearchCustomDataValueArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        return self
 
 class SearchProjectGlossaryArgs(IntCoercionMixin, BaseArgs):
     """Arguments for searching the ProjectGlossary using FTS."""
     INT_FIELDS: ClassVar[Set[str]] = {"limit"}
     query_term: str = Field(..., min_length=1, description="The term to search for in the glossary.")
-    limit: Optional[int] = Field(10, ge=1, description="Maximum number of search results to return.")
+    limit: Optional[int] = Field(10, description="Maximum number of search results to return.")
+
+    @model_validator(mode='after')
+    def check_limit(self) -> 'SearchProjectGlossaryArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        return self
 
 # --- Export Tool ---
 
@@ -295,7 +346,7 @@ class ContextLink(BaseModel):
     id: Optional[int] = None # Auto-incremented by DB
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source_item_type: str = Field(..., description="Type of the source item (e.g., 'decision', 'progress_entry')")
-    source_item_id: str = Field(..., description="ID or key of the source item") # Using str to accommodate string keys from custom_data etc.
+    source_item_id: str = Field(..., description="ID or key of the source item")
     target_item_type: str = Field(..., description="Type of the target item")
     target_item_id: str = Field(..., description="ID or key of the target item")
     relationship_type: str = Field(..., description="Nature of the link (e.g., 'implements', 'related_to')")
@@ -316,10 +367,14 @@ class GetLinkedItemsArgs(IntCoercionMixin, BaseArgs):
     item_type: str = Field(..., description="Type of the item to find links for (e.g., 'decision')")
     item_id: str = Field(..., description="ID or key of the item to find links for")
     relationship_type_filter: Optional[str] = Field(None, description="Optional: Filter by relationship type")
-    # Optional filters for the other end of the link
     linked_item_type_filter: Optional[str] = Field(None, description="Optional: Filter by the type of the linked items")
-    # direction_filter: Optional[str] = Field(None, description="Optional: 'source' or 'target' to get links where item_id is source or target. Default all.") # Future enhancement
-    limit: Optional[int] = Field(None, ge=1, description="Maximum number of links to return")
+    limit: Optional[int] = Field(None, description="Maximum number of links to return")
+
+    @model_validator(mode='after')
+    def check_limit(self) -> 'GetLinkedItemsArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        return self
 
 # --- Batch Logging Tool ---
 
@@ -334,10 +389,18 @@ class GetItemHistoryArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving history of a context item."""
     INT_FIELDS: ClassVar[Set[str]] = {"limit", "version"}
     item_type: str = Field(..., description="Type of the item: 'product_context' or 'active_context'")
-    limit: Optional[int] = Field(None, ge=1, description="Maximum number of history entries to return (most recent first)")
+    limit: Optional[int] = Field(None, description="Maximum number of history entries to return (most recent first)")
     before_timestamp: Optional[datetime] = Field(None, description="Return entries before this timestamp")
     after_timestamp: Optional[datetime] = Field(None, description="Return entries after this timestamp")
-    version: Optional[int] = Field(None, ge=1, description="Return a specific version")
+    version: Optional[int] = Field(None, description="Return a specific version")
+
+    @model_validator(mode='after')
+    def check_numerical_constraints(self) -> 'GetItemHistoryArgs':
+        if self.limit is not None and self.limit < 1:
+            raise ValueError("limit must be greater than or equal to 1")
+        if self.version is not None and self.version < 1:
+            raise ValueError("version must be greater than or equal to 1")
+        return self
 
     @model_validator(mode='before')
     @classmethod
@@ -358,21 +421,24 @@ class GetConportSchemaArgs(BaseArgs):
 class GetRecentActivitySummaryArgs(IntCoercionMixin, BaseArgs):
     """Arguments for retrieving a summary of recent ConPort activity."""
     INT_FIELDS: ClassVar[Set[str]] = {"hours_ago", "limit_per_type"}
-    hours_ago: Optional[int] = Field(None, ge=1, description="Look back this many hours for recent activity. Mutually exclusive with 'since_timestamp'.")
+    hours_ago: Optional[int] = Field(None, description="Look back this many hours for recent activity. Mutually exclusive with 'since_timestamp'.")
     since_timestamp: Optional[datetime] = Field(None, description="Look back for activity since this specific timestamp. Mutually exclusive with 'hours_ago'.")
-    limit_per_type: Optional[int] = Field(5, ge=1, description="Maximum number of recent items to show per activity type (e.g., 5 most recent decisions).")
+    limit_per_type: Optional[int] = Field(5, description="Maximum number of recent items to show per activity type (e.g., 5 most recent decisions).")
 
     @model_validator(mode='before')
     @classmethod
     def check_timeframe_exclusive(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get('hours_ago') is not None and values.get('since_timestamp') is not None:
             raise ValueError("Provide either 'hours_ago' or 'since_timestamp', not both.")
-        if values.get('hours_ago') is None and values.get('since_timestamp') is None:
-            # Default to a reasonable timeframe if neither is provided, e.g., last 24 hours
-            # For now, let's require one or allow the handler to define a default if none are passed.
-            # Or, make one of them have a default in Field. For now, let's assume handler can default if both are None.
-            pass # Allow both to be None, handler can set a default (e.g. 24 hours)
         return values
+
+    @model_validator(mode='after')
+    def check_numerical_constraints(self) -> 'GetRecentActivitySummaryArgs':
+        if self.hours_ago is not None and self.hours_ago < 1:
+            raise ValueError("hours_ago must be greater than or equal to 1")
+        if self.limit_per_type is not None and self.limit_per_type < 1:
+            raise ValueError("limit_per_type must be greater than or equal to 1")
+        return self
 
 # --- Semantic Search Tool Args ---
 
@@ -380,11 +446,19 @@ class SemanticSearchConportArgs(IntCoercionMixin, BaseArgs):
     """Arguments for performing a semantic search across ConPort data."""
     INT_FIELDS: ClassVar[Set[str]] = {"top_k"}
     query_text: str = Field(..., min_length=1, description="The natural language query text for semantic search.")
-    top_k: int = Field(default=5, ge=1, le=25, description="Number of top results to return.") # Max 25 for now
+    top_k: int = Field(default=5, description="Number of top results to return.")
     filter_item_types: Optional[List[str]] = Field(default=None, description="Optional list of item types to filter by (e.g., ['decision', 'custom_data']). Valid types: 'decision', 'system_pattern', 'custom_data', 'progress_entry'.")
     filter_tags_include_any: Optional[List[str]] = Field(default=None, description="Optional list of tags; results will include items matching any of these tags.")
     filter_tags_include_all: Optional[List[str]] = Field(default=None, description="Optional list of tags; results will include only items matching all of these tags.")
     filter_custom_data_categories: Optional[List[str]] = Field(default=None, description="Optional list of categories to filter by if 'custom_data' is in filter_item_types.")
+
+    @model_validator(mode='after')
+    def check_numerical_constraints(self) -> 'SemanticSearchConportArgs':
+        if self.top_k < 1:
+            raise ValueError("top_k must be greater than or equal to 1")
+        if self.top_k > 25:
+            raise ValueError("top_k must be less than or equal to 25")
+        return self
 
     @model_validator(mode='before')
     @classmethod
@@ -403,7 +477,6 @@ class SemanticSearchConportArgs(IntCoercionMixin, BaseArgs):
         return values
 
 # Dictionary mapping tool names to their expected argument models (for potential future use/validation)
-# Note: The primary validation happens in the handler using these models.
 TOOL_ARG_MODELS = {
     "get_product_context": GetContextArgs,
     "update_product_context": UpdateContextArgs,
@@ -431,7 +504,7 @@ TOOL_ARG_MODELS = {
     "get_item_history": GetItemHistoryArgs,
     "get_conport_schema": GetConportSchemaArgs,
     "get_recent_activity_summary": GetRecentActivitySummaryArgs,
-    "semantic_search_conport": SemanticSearchConportArgs, # New tool
-    "update_progress": UpdateProgressArgs, # New tool
-    "delete_progress_by_id": DeleteProgressByIdArgs, # New tool
+    "semantic_search_conport": SemanticSearchConportArgs,
+    "update_progress": UpdateProgressArgs,
+    "delete_progress_by_id": DeleteProgressByIdArgs,
 }

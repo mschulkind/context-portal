@@ -2,6 +2,18 @@
 
 <br>
 
+## v0.3.4 (2025-09-18)
+
+### Critical Bug Fix
+- **String-to-Integer Coercion:** Fixed a validation timing issue where field-level `ge`/`le` constraints in FastMCP tool definitions were preventing string-to-integer coercion from working properly. String parameters like `"5"` for `limit` were being rejected before the `IntCoercionMixin` could convert them to integers. The fix removes field-level constraints from 13 affected tools and replaces them with `@model_validator(mode='after')` methods in Pydantic models, ensuring coercion happens before validation.
+
+### Technical Details
+- **Affected Tools:** `get_decisions`, `get_progress`, `get_system_patterns`, `get_custom_data`, `search_decisions_fts`, `search_custom_data_value_fts`, `search_project_glossary_fts`, `get_recent_activity_summary`, `semantic_search_conport`, `get_item_history`, `batch_log_items`, `delete_decision_by_id`, `delete_system_pattern_by_id`
+- **Root Cause:** FastMCP field-level `ge=1` and `le=25` constraints were applied before Pydantic model validation, preventing the custom `IntCoercionMixin` from converting string inputs to integers
+- **Solution:** Moved all integer validation logic to `@model_validator(mode='after')` methods that run after field coercion
+
+<br>
+
 ## v0.3.3 (2025-09-18)
 
 ### Fixes & Improvements

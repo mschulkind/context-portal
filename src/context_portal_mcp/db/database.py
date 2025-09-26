@@ -320,9 +320,7 @@ def upgrade() -> None:
         CREATE VIRTUAL TABLE custom_data_fts USING fts5(
             category,
             key,
-            value_text,
-            content="custom_data",
-            content_rowid="id"
+            value_text
         );
         ''')
 

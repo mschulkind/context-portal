@@ -138,17 +138,36 @@ async def tool_get_product_context(
 async def tool_update_product_context(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     ctx: Context, # MCPContext should typically be last, but let's keep other args grouped
-    content: Annotated[Optional[Dict[str, Any]], Field(description="The full new context content as a dictionary. Overwrites existing.")] = None,
-    patch_content: Annotated[Optional[Dict[str, Any]], Field(description="A dictionary of changes to apply to the existing context (add/update keys).")] = None
+    content: Annotated[Optional[Union[Dict[str, Any], str]], Field(description="The full new context content as a dictionary. Overwrites existing.")] = None,
+    patch_content: Annotated[Optional[Union[Dict[str, Any], str]], Field(description="A dictionary of changes to apply to the existing context (add/update keys).")] = None
 ) -> Dict[str, Any]:
     try:
+        # Handle the case where content or patch_content might be passed as strings
+        import json
+        
+        # Parse content if it's a string
+        parsed_content = content
+        if isinstance(content, str):
+            try:
+                parsed_content = json.loads(content)
+            except json.JSONDecodeError as e:
+                raise exceptions.ContextPortalError(f"Invalid JSON in content parameter: {e}")
+        
+        # Parse patch_content if it's a string
+        parsed_patch_content = patch_content
+        if isinstance(patch_content, str):
+            try:
+                parsed_patch_content = json.loads(patch_content)
+            except json.JSONDecodeError as e:
+                raise exceptions.ContextPortalError(f"Invalid JSON in patch_content parameter: {e}")
+        
         # Pydantic model UpdateContextArgs will be validated by FastMCP based on annotations.
         # We still need to construct it for the handler.
         # The model's own validator will check 'content' vs 'patch_content'.
         pydantic_args = models.UpdateContextArgs(
             workspace_id=workspace_id,
-            content=content,
-            patch_content=patch_content
+            content=parsed_content,
+            patch_content=parsed_patch_content
         )
         return mcp_handlers.handle_update_product_context(pydantic_args)
     except exceptions.ContextPortalError as e:
@@ -180,14 +199,33 @@ async def tool_get_active_context(
 async def tool_update_active_context(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     ctx: Context,
-    content: Annotated[Optional[Dict[str, Any]], Field(description="The full new context content as a dictionary. Overwrites existing.")] = None,
-    patch_content: Annotated[Optional[Dict[str, Any]], Field(description="A dictionary of changes to apply to the existing context (add/update keys).")] = None
+    content: Annotated[Optional[Union[Dict[str, Any], str]], Field(description="The full new context content as a dictionary. Overwrites existing.")] = None,
+    patch_content: Annotated[Optional[Union[Dict[str, Any], str]], Field(description="A dictionary of changes to apply to the existing context (add/update keys).")] = None
 ) -> Dict[str, Any]:
     try:
+        # Handle the case where content or patch_content might be passed as strings
+        import json
+        
+        # Parse content if it's a string
+        parsed_content = content
+        if isinstance(content, str):
+            try:
+                parsed_content = json.loads(content)
+            except json.JSONDecodeError as e:
+                raise exceptions.ContextPortalError(f"Invalid JSON in content parameter: {e}")
+        
+        # Parse patch_content if it's a string
+        parsed_patch_content = patch_content
+        if isinstance(patch_content, str):
+            try:
+                parsed_patch_content = json.loads(patch_content)
+            except json.JSONDecodeError as e:
+                raise exceptions.ContextPortalError(f"Invalid JSON in patch_content parameter: {e}")
+        
         pydantic_args = models.UpdateContextArgs(
             workspace_id=workspace_id,
-            content=content,
-            patch_content=patch_content
+            content=parsed_content,
+            patch_content=parsed_patch_content
         )
         return mcp_handlers.handle_update_active_context(pydantic_args)
     except exceptions.ContextPortalError as e:
@@ -257,7 +295,7 @@ async def tool_search_decisions_fts(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     query_term: Annotated[str, Field(min_length=1, description="The term to search for in decisions.")],
     ctx: Context,
-    limit: Annotated[Optional[Union[int, str]], Field(default=10, ge=1, description="Maximum number of search results to return.")] = 10
+    limit: Annotated[Optional[Union[int, str]], Field(default=10, description="Maximum number of search results to return.")] = 10
 ) -> List[Dict[str, Any]]:
     try:
         pydantic_args = models.SearchDecisionsArgs(
@@ -621,7 +659,7 @@ async def tool_search_custom_data_value_fts(
     query_term: Annotated[str, Field(min_length=1, description="The term to search for in custom data (category, key, or value).")],
     ctx: Context,
     category_filter: Annotated[Optional[str], Field(description="Optional: Filter results to this category after FTS.")] = None,
-    limit: Annotated[Optional[Union[int, str]], Field(default=10, ge=1, description="Maximum number of search results to return.")] = 10
+    limit: Annotated[Optional[Union[int, str]], Field(default=10, description="Maximum number of search results to return.")] = 10
 ) -> List[Dict[str, Any]]:
     try:
         pydantic_args = models.SearchCustomDataValueArgs(
@@ -765,7 +803,7 @@ async def tool_semantic_search_conport(
     workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     query_text: Annotated[str, Field(min_length=1, description="The natural language query text for semantic search.")],
     ctx: Context,
-    top_k: Annotated[Union[int, str], Field(default=5, le=25, description="Number of top results to return.")] = 5,
+    top_k: Annotated[Union[int, str], Field(default=5, description="Number of top results to return.")] = 5,
     filter_item_types: Annotated[Optional[List[str]], Field(description="Optional list of item types to filter by (e.g., ['decision', 'custom_data']). Valid types: 'decision', 'system_pattern', 'custom_data', 'progress_entry'.")] = None,
     filter_tags_include_any: Annotated[Optional[List[str]], Field(description="Optional list of tags; results will include items matching any of these tags.")] = None,
     filter_tags_include_all: Annotated[Optional[List[str]], Field(description="Optional list of tags; results will include only items matching all of these tags.")] = None,
@@ -800,6 +838,7 @@ async def tool_semantic_search_conport(
 
 @conport_mcp.tool(name="get_workspace_detection_info", description="Provides detailed information about workspace detection for debugging and verification.")
 async def tool_get_workspace_detection_info(
+    workspace_id: Annotated[str, Field(description="Identifier for the workspace (e.g., absolute path)")],
     ctx: Context,
     start_path: Annotated[Optional[str], Field(description="Starting directory for detection analysis (default: current directory)")] = None
 ) -> Dict[str, Any]:
